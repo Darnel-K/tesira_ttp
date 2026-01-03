@@ -4,6 +4,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, PLATFORMS, CONF_HOST, CONF_PORT
 from .hub import TesiraHub
@@ -12,6 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DATA_HUBS = "hubs"
 DATA_ENTRY_HUBKEY = "entry_hubkey"
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.data.setdefault(DOMAIN, {})
