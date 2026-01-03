@@ -1,0 +1,18 @@
+# Python / Home Assistant build artifacts
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual envs / tooling
+.venv/
+.env/
+env/
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# HA cache folders
+.storage/
+.pytest_cache/

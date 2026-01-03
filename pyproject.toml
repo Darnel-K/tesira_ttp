@@ -1,0 +1,8 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.ruff.lint.isort]
+force-single-line = false
+known-first-party = ["custom_components"]

@@ -1,0 +1,75 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Tesira",
+        "description": "Enter the Tesira host and port for the TTP Telnet server.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      },
+      "control": {
+        "title": "Add first control",
+        "description": "Add the first level control (instance tag + channel). You can add more later in Configure.",
+        "data": {
+          "name": "Name",
+          "instance_tag": "Instance tag",
+          "channel": "Channel",
+          "min_db": "Min dB",
+          "max_db": "Max dB",
+          "step_db": "Step dB"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the Tesira device."
+    },
+    "abort": {
+      "already_configured": "This Tesira device is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure controls",
+        "menu_options": {
+          "add": "Add control",
+          "edit": "Edit control",
+          "remove": "Remove control"
+        }
+      },
+      "add": {
+        "title": "Add control",
+        "data": {
+          "name": "Name",
+          "instance_tag": "Instance tag",
+          "channel": "Channel",
+          "min_db": "Min dB",
+          "max_db": "Max dB",
+          "step_db": "Step dB"
+        }
+      },
+      "edit": {
+        "title": "Select control"
+      },
+      "edit_control": {
+        "title": "Edit control",
+        "data": {
+          "name": "Name",
+          "instance_tag": "Instance tag",
+          "channel": "Channel",
+          "min_db": "Min dB",
+          "max_db": "Max dB",
+          "step_db": "Step dB"
+        }
+      },
+      "remove": {
+        "title": "Remove controls"
+      }
+    },
+    "abort": {
+      "no_controls": "No controls are configured."
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Tesira TTP Volume (Telnet)",
+  "content_in_root": false,
+  "domains": [
+    "tesira_ttp"
+  ],
+  "homeassistant": "2024.6.0"
+}
