@@ -1,3 +1,14 @@
+# #################################################################################################################### #
+# Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
+# Repository: tesira_ttp                                                                                               #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Saturday, March 21st 2026, 12:52:46 AM                                                                #
+# Original Author: Darnel Kumar                                                                                        #
+# Author Github: https://github.com/Darnel-K                                                                           #
+#                                                                                                                      #
+# This code complies with: https://gist.github.com/Darnel-K/8badda0cabdabb15359350f7af911c90                           #
+# Copyright (c) 2026 Darnel Kumar                                                                                      #
+# #################################################################################################################### #
 from __future__ import annotations
 
 import logging
@@ -26,9 +37,10 @@ from .const import (
     DEFAULT_CHANNEL,
     DEFAULT_MIN_DB,
     DEFAULT_MAX_DB,
-    DEFAULT_STEP_DB,
+    DEFAULT_STEP_DB
 )
 from .tesira_client import TesiraTtpClient
+from .util import schema_with_defaults
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,34 +90,42 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             self.context["host"] = host
             self.context["port"] = port
-            return self.async_show_form(step_id="control", data_schema=_control_schema(), errors={})
+            title = f"Tesira {host}:{port}"
+            return self.async_create_entry(title=title, data={CONF_HOST: host, CONF_PORT: port})
 
         return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
-    async def async_step_control(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        if user_input is None:
-            return self.async_show_form(step_id="control", data_schema=_control_schema(), errors={})
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        errors: dict[str, str] = {}
 
-        host: str = self.context["host"]
-        port: int = self.context["port"]
+        entry = self._get_reconfigure_entry()
+        defaults = {
+            CONF_HOST: entry.data.get(CONF_HOST),
+            CONF_PORT: entry.data.get(CONF_PORT),
+        }
+        schema = schema_with_defaults(STEP_USER_SCHEMA, defaults)
 
-        controls = [
-            {
-                CONF_CONTROL_NAME: user_input[CONF_CONTROL_NAME],
-                CONF_INSTANCE_TAG: user_input[CONF_INSTANCE_TAG],
-                CONF_CHANNEL: user_input[CONF_CHANNEL],
-                CONF_MIN_DB: user_input[CONF_MIN_DB],
-                CONF_MAX_DB: user_input[CONF_MAX_DB],
-                CONF_STEP_DB: user_input[CONF_STEP_DB],
-            }
-        ]
+        if user_input is not None:
+            host = user_input[CONF_HOST]
+            port = user_input[CONF_PORT]
 
-        title = f"Tesira {host}:{port}"
-        return self.async_create_entry(
-            title=title,
-            data={CONF_HOST: host, CONF_PORT: port},
-            options={CONF_CONTROLS: controls},
-        )
+            await self.async_set_unique_id(f"{host}:{port}")
+            self._abort_if_unique_id_configured()
+
+            try:
+                client = TesiraTtpClient(host, port)
+                await client.connect()
+                await client.close()
+            except Exception as e:
+                _LOGGER.debug("Connectivity test failed: %s", e)
+                errors["base"] = "cannot_connect"
+                return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+
+            self.context["host"] = host
+            self.context["port"] = port
+            return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
+
+        return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 
     @staticmethod
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
