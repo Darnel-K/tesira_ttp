@@ -1,15 +1,15 @@
 {
     "domain": "tesira_ttp",
     "name": "Tesira TTP Control (Telnet)",
-    "config_flow": true,
     "codeowners": [
         "@Darnel-K"
     ],
+    "config_flow": true,
     "dependencies": [],
     "documentation": "https://github.com/Darnel-K/Tesira_TTP/wiki",
-    "issue_tracker": "https://github.com/Darnel-K/Tesira_TTP/issues",
     "integration_type": "hub",
     "iot_class": "local_polling",
+    "issue_tracker": "https://github.com/Darnel-K/Tesira_TTP/issues",
     "loggers": [
         "custom_components.tesira_ttp"
     ],
