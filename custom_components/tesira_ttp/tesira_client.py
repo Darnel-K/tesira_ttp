@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, March 22nd 2026, 5:40:20 PM                                                                   #
+# Last Modified: Sunday, March 22nd 2026, 6:44:13 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -95,9 +95,7 @@ class TesiraClient:
         heartbeat_failure_threshold: int = 3,
         heartbeat_jitter: float = 1.5,
 
-        logger=None,
         safe_mode=False,
-        quiet_mode=True,
     ):
         # -----------------------------------------------------------------
         # Protocol validation
@@ -123,14 +121,7 @@ class TesiraClient:
         self.port = port
         self.known_hosts = known_hosts
 
-        # Quiet mode first
-        self.quiet_mode = quiet_mode
-
-        # Logging
-        if logger:
-            self.log = logger
-        else:
-            self.log = lambda msg: (None if self.quiet_mode else print(msg))
+        self.safe_mode = safe_mode
 
         # Internal connection objects
         self._conn = None        # SSH connection OR sentinel True for telnet
@@ -170,8 +161,7 @@ class TesiraClient:
         def data_received(self, data, datatype=None):
             self.buffer += data
 
-            if not self.parent.quiet_mode:
-                self.parent.log(f"[RX/TELNET] {repr(data)}")
+            _LOGGER.debug("[RX/TELNET] %s", repr(data))
 
             # Detect +OK or -ERR
             if "+OK" in self.buffer or "-ERR" in self.buffer:
@@ -183,8 +173,7 @@ class TesiraClient:
                     self.parent._handle_publish_event(line.strip())
 
         def connection_lost(self, exc):
-            if not self.parent.quiet_mode:
-                self.parent.log("[TELNET] Connection lost.")
+            _LOGGER.warning("[TELNET] Connection lost.")
             self.complete.set()
 
 
@@ -201,8 +190,7 @@ class TesiraClient:
         def data_received(self, data, datatype):
             self.buffer += data
 
-            if not self.parent.quiet_mode:
-                self.parent.log(f"[RX/SSH] {repr(data)}")
+            _LOGGER.debug("[RX/SSH] %s", repr(data))
 
             if "+OK" in self.buffer or "-ERR" in self.buffer:
                 self.complete.set()
@@ -212,8 +200,7 @@ class TesiraClient:
                     self.parent._handle_publish_event(line.strip())
 
         def connection_lost(self, exc):
-            if not self.parent.quiet_mode:
-                self.parent.log("[SSH] Connection lost")
+            _LOGGER.warning("[SSH] Connection lost")
             self.complete.set()
 
 
@@ -235,8 +222,8 @@ class TesiraClient:
         backoff = min(1 * (2 ** (attempt - 1)), 20)
 
         try:
-            if not self.quiet_mode:
-                self.log(f"[NET] Connecting via {self.proto.upper()} to {self.host}:{self.port}")
+            _LOGGER.debug("[NET] Connecting via %s to %s:%s",
+                          self.proto.upper(), self.host, self.port)
 
             # ---------------------------------------------------------
             # SSH CONNECTION
@@ -278,8 +265,7 @@ class TesiraClient:
 
                 self._writer.write("\r\n")
 
-            if not self.quiet_mode:
-                self.log("[NET] Connected")
+            _LOGGER.debug("[NET] Connected")
 
             # Start heartbeat once
             if self._heartbeat_task is None:
@@ -288,8 +274,7 @@ class TesiraClient:
             await self._resubscribe_all()
 
         except Exception as e:
-            if not self.quiet_mode:
-                self.log(f"[NET] Connect failed ({e}), retrying in {backoff}s")
+            _LOGGER.error("[NET] Connect failed (%s), retrying in %s s", e, backoff)
             await asyncio.sleep(backoff)
             return await self.connect(attempt + 1)
 
@@ -340,8 +325,7 @@ class TesiraClient:
             self._session.buffer = ""
             self._session.complete.clear()
 
-            if not self.quiet_mode:
-                self.log(f"[TX] {cmd}")
+            _LOGGER.debug("[TX] %s", cmd)
 
             await self._send(cmd + "\r\n")
 
@@ -356,7 +340,7 @@ class TesiraClient:
             final = next((l for l in lines if l.startswith("+OK") or l.startswith("-ERR")), None)
 
             if not final:
-                raise TesiraError("No +OK or -ERR returned", raw=raw, cmd=cmd)
+                raise TesiraError("No +OK/-ERR returned", raw=raw, cmd=cmd)
 
             if final.startswith("-ERR"):
                 if self.safe_mode:
@@ -411,8 +395,11 @@ class TesiraClient:
             try:
                 await self.command("DEVICE get deviceInfo", timeout=3)
                 self._heartbeat_failures = 0
-            except Exception:
+            except Exception as e:
                 self._heartbeat_failures += 1
+                _LOGGER.warning("Heartbeat failure %s: %s",
+                                self._heartbeat_failures, e)
+
                 if self._heartbeat_failures >= self._heartbeat_failure_threshold:
                     await self.disconnect()
 
@@ -452,8 +439,7 @@ class TesiraClient:
             try:
                 await self.command(cmd)
             except Exception as e:
-                self.log(f"[SUB ERROR] {e}")
-
+                _LOGGER.error("[SUB ERROR] %s", e)
 
     # =====================================================================
     # PUBLISH-EVENT ROUTER
@@ -478,13 +464,13 @@ class TesiraClient:
             try:
                 cb(data)
             except Exception as e:
-                self.log(f"[EVENT ERROR] {e}")
+                _LOGGER.error("[EVENT ERROR] %s", e)
 
         if self._event_callback:
             try:
                 self._event_callback(data)
             except Exception as e:
-                self.log(f"[EVENT ERROR global] {e}")
+                _LOGGER.error("[EVENT ERROR global] %s", e)
 
 
     # =====================================================================
@@ -537,16 +523,16 @@ class TesiraTtpClient:
     def __init__(self, ip: str, port: int = 23, proto: str = "telnet",
                  user: str = "default", password: str = None):
 
-        from .tesira_client import TesiraClient  # <-- import your new client
+        from .tesira_client import TesiraClient
 
         proto = proto.strip().lower()
         if proto == "telnet":
             _LOGGER.warning(
-                "Using Telnet protocol is not recommended. See Biamp security docs."
+                "Using Telnet protocol is not recommended. For more information, see https://support.biamp.com/Tesira/Control/Tesira_security_best_practices"
             )
             if user != "default" or password not in (None, ""):
                 raise NotImplementedError(
-                    "Tesira Telnet only supports user='default' and blank password."
+                    "Telnet only supports user='default' + blank password."
                 )
         elif proto != "ssh":
             raise ValueError(f"Unsupported proto={proto!r}")
@@ -558,7 +544,6 @@ class TesiraTtpClient:
             password=password or "",
             port=port,
             proto=proto,
-            quiet_mode=True,       # old class had no internal logging
         )
 
         self._lock = asyncio.Lock()
@@ -599,7 +584,7 @@ class TesiraTtpClient:
 
     # ----------------------------------------------------------------------
     async def _read_raw(self, max_bytes=1024) -> str:
-        """Read raw data directly from TELNET or SSH channel."""
+        """Read raw text from Tesira using underlying protocol."""
         if self._proto == "ssh":
             try:
                 return await asyncio.wait_for(self._client._chan.read(max_bytes), timeout=0.2)
