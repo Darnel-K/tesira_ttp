@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, March 22nd 2026, 6:53:52 PM                                                                   #
+# Last Modified: Sunday, March 22nd 2026, 7:06:25 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -123,6 +123,8 @@ class TesiraClient:
 
         self.safe_mode = safe_mode
 
+        self._telnet_reader_future = None
+
         # Internal connection objects
         self._conn = None        # SSH connection OR sentinel True for telnet
         self._chan = None        # SSH channel
@@ -159,8 +161,10 @@ class TesiraClient:
             self.complete = asyncio.Event()
 
         def data_received(self, data, datatype=None):
-            self.buffer += data
+            if not data:
+                return
 
+            self.buffer += data
             _LOGGER.debug("[RX/TELNET] %s", repr(data))
 
             # Detect +OK or -ERR
@@ -208,8 +212,16 @@ class TesiraClient:
     # TELNET READER TASK
     # =====================================================================
     async def _telnet_reader_task(self):
-        async for data in self._reader:
-            self._session.data_received(data)
+        try:
+            async for data in self._reader:
+                if data == "" or data is None:
+                    _LOGGER.debug("[TELNET] EOF received; stopping reader task")
+                    break
+                self._session.data_received(data)
+        except asyncio.CancelledError:
+            _LOGGER.debug("[TELNET] Reader task cancelled")
+        except Exception as e:
+            _LOGGER.error("[TELNET] Reader task crashed: %s", e)
 
 
     # =====================================================================
@@ -261,7 +273,7 @@ class TesiraClient:
                 self._conn = True  # sentinel indicating connected
 
                 # Background reader
-                asyncio.create_task(self._telnet_reader_task())
+                self._telnet_reader_future = asyncio.create_task(self._telnet_reader_task())
 
                 self._writer.write("\r\n")
 
@@ -283,6 +295,10 @@ class TesiraClient:
     # DISCONNECT
     # =====================================================================
     async def disconnect(self):
+        if self._telnet_reader_future:
+            self._telnet_reader_future.cancel()
+            self._telnet_reader_future = None
+
         if self.proto == "ssh":
             if self._conn:
                 try:
