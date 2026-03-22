@@ -83,7 +83,7 @@ Their work provided the initial foundation that inspired this redesigned and ful
 
 ## License
 
-Released under the **MIT License**.
+Released under the **GNU Affero General Public License v3.0 (AGPL‑3.0)**.
 
 ## Status
 
