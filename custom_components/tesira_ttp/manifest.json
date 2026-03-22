@@ -17,5 +17,5 @@
         "telnetlib3>=4.0.1",
         "asyncssh>=2.22.0"
     ],
-    "version": "0.2.0"
+    "version": "0.3.0"
 }
