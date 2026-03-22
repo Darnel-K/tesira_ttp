@@ -1,20 +1,21 @@
 {
     "domain": "tesira_ttp",
     "name": "Tesira TTP Control (Telnet)",
-    "version": "0.1.0",
-    "documentation": "https://github.com/Darnel-K/Tesira_TTP/wiki",
-    "issue_tracker": "https://github.com/Darnel-K/Tesira_TTP/issues",
     "codeowners": [
         "@Darnel-K"
     ],
-    "requirements": [
-        "telnetlib3>=4.0.1"
-    ],
-    "dependencies": [],
     "config_flow": true,
+    "dependencies": [],
+    "documentation": "https://github.com/Darnel-K/Tesira_TTP/wiki",
     "integration_type": "hub",
     "iot_class": "local_polling",
+    "issue_tracker": "https://github.com/Darnel-K/Tesira_TTP/issues",
     "loggers": [
         "custom_components.tesira_ttp"
-    ]
+    ],
+    "requirements": [
+        "telnetlib3>=4.0.1",
+        "asyncssh>=2.22.0"
+    ],
+    "version": "0.3.0"
 }
