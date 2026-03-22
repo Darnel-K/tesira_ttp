@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, March 22nd 2026, 7:06:25 PM                                                                   #
+# Created Date: Sunday, March 22nd 2026, 11:00:09 PM                                                                   #
+# Last Modified: Sunday, March 22nd 2026, 11:10:00 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -19,6 +19,7 @@ import random
 import re
 import time
 import logging
+import inspect
 
 # For backward compatibility, this module still contains the old TesiraTtpClient class,
 # but it is now a wrapper around the new TesiraClient which supports both SSH and Telnet. The new TesiraClient is more robust and feature-rich, while TesiraTtpClient preserves the old API for existing code. New code should use TesiraClient directly for better performance and reliability.
@@ -474,17 +475,26 @@ class TesiraClient:
         if not token:
             return
 
+        # Subscription callback
         sub = self._subscriptions.get(token)
         if sub:
             cb = sub["callback"]
             try:
-                cb(data)
+                if inspect.iscoroutinefunction(cb):
+                    asyncio.create_task(cb(data))
+                else:
+                    cb(data)
             except Exception as e:
                 _LOGGER.error("[EVENT ERROR] %s", e)
 
+        # Global event callback
         if self._event_callback:
+            cb = self._event_callback
             try:
-                self._event_callback(data)
+                if inspect.iscoroutinefunction(cb):
+                    asyncio.create_task(cb(data))
+                else:
+                    cb(data)
             except Exception as e:
                 _LOGGER.error("[EVENT ERROR global] %s", e)
 
