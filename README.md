@@ -40,9 +40,18 @@ Copy:
 
 into:
 
+<<<<<<< HEAD
 `/config/custom_components/tesira_ttp/`
 
 then restart Home Assistant.
+=======
+- ip / Port
+- Add your first control (name, instance tag, channel, min/max dB, step dB)
+
+To add more controls later:
+
+- Open the integration → **Configure** → Add / Edit / Remove controls
+>>>>>>> develop
 
 ## Configuration
 
@@ -70,7 +79,7 @@ custom_components/tesira_ttp/tesira_cli.py
 Example usage from HA Core on HAOS:
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 192.168.40.84 --tag volume --get
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --ip 192.168.40.84 --tag volume --get
 ```
 
 ## Acknowledgements

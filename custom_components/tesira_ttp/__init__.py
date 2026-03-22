@@ -6,7 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, PLATFORMS, CONF_HOST, CONF_PORT
+from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT
 from .hub import TesiraHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,14 +26,14 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    host = entry.data[CONF_HOST]
+    ip = entry.data[CONF_IP]
     port = entry.data[CONF_PORT]
 
     hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
-    hubkey = f"{host}:{port}"
+    hubkey = f"{ip}:{port}"
     hub = hubs.get(hubkey)
     if hub is None:
-        hub = TesiraHub(host, port)
+        hub = TesiraHub(ip, port)
         hubs[hubkey] = hub
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 

@@ -3,10 +3,10 @@
 
 Run on HAOS inside the Home Assistant Core container:
 
-  ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 192.168.40.84 --tag volume --get
-  ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 192.168.40.84 --tag volume --inc 1.0
-  ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 192.168.40.84 --tag volume --set -20
-  ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 192.168.40.84 --interactive
+  ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --ip 192.168.40.84 --tag volume --get
+  ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --ip 192.168.40.84 --tag volume --inc 1.0
+  ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --ip 192.168.40.84 --tag volume --set -20
+  ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --ip 192.168.40.84 --interactive
 """
 
 import argparse
@@ -16,7 +16,7 @@ from tesira_client import TesiraTtpClient, parse_first_float
 
 async def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--host", required=True)
+    ap.add_argument("--ip", required=True)
     ap.add_argument("--port", type=int, default=23)
     ap.add_argument("--tag", default="volume")
     ap.add_argument("--ch", type=int, default=1)
@@ -29,7 +29,7 @@ async def main() -> int:
 
     args = ap.parse_args()
 
-    c = TesiraTtpClient(args.host, args.port)
+    c = TesiraTtpClient(args.ip, args.port)
 
     async def send(line: str):
         resp = await c.send_and_wait(line, timeout=2.0)
