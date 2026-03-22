@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Saturday, March 21st 2026, 12:52:46 AM                                                                #
+# Last Modified: Sunday, March 22nd 2026, 12:45:03 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -23,7 +23,7 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import (
     DOMAIN,
-    CONF_HOST,
+    CONF_IP,
     CONF_PORT,
     CONF_CONTROLS,
     CONF_CONTROL_NAME,
@@ -46,7 +46,7 @@ _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_HOST): cv.string,
+        vol.Required(CONF_IP): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
     }
 )
@@ -71,16 +71,16 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            host = user_input[CONF_HOST]
+            ip = user_input[CONF_IP]
             port = user_input[CONF_PORT]
 
-            # Use host:port as unique key so a Tesira device is only configured once.
-            await self.async_set_unique_id(f"{host}:{port}")
+            # Use ip:port as unique key so a Tesira device is only configured once.
+            await self.async_set_unique_id(f"{ip}:{port}")
             self._abort_if_unique_id_configured()
 
             # Quick connectivity probe.
             try:
-                client = TesiraTtpClient(host, port)
+                client = TesiraTtpClient(ip, port)
                 await client.connect()
                 await client.close()
             except Exception as e:
@@ -88,10 +88,10 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
-            self.context["host"] = host
+            self.context["ip"] = ip
             self.context["port"] = port
-            title = f"Tesira {host}:{port}"
-            return self.async_create_entry(title=title, data={CONF_HOST: host, CONF_PORT: port})
+            title = f"Tesira {ip}:{port}"
+            return self.async_create_entry(title=title, data={CONF_IP: ip, CONF_PORT: port})
 
         return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
@@ -100,20 +100,20 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         entry = self._get_reconfigure_entry()
         defaults = {
-            CONF_HOST: entry.data.get(CONF_HOST),
+            CONF_IP: entry.data.get(CONF_IP),
             CONF_PORT: entry.data.get(CONF_PORT),
         }
         schema = schema_with_defaults(STEP_USER_SCHEMA, defaults)
 
         if user_input is not None:
-            host = user_input[CONF_HOST]
+            ip = user_input[CONF_IP]
             port = user_input[CONF_PORT]
 
-            await self.async_set_unique_id(f"{host}:{port}")
+            await self.async_set_unique_id(f"{ip}:{port}")
             self._abort_if_unique_id_configured()
 
             try:
-                client = TesiraTtpClient(host, port)
+                client = TesiraTtpClient(ip, port)
                 await client.connect()
                 await client.close()
             except Exception as e:
@@ -121,7 +121,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 
-            self.context["host"] = host
+            self.context["ip"] = ip
             self.context["port"] = port
             return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
 

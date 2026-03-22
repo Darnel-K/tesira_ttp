@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "tesira_ttp"
 PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER]
 
-CONF_HOST = "host"
+CONF_IP = "ip"
 CONF_PORT = "port"
 
 # Controls live in options as a list of dicts

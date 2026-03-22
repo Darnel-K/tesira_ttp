@@ -2,18 +2,18 @@
     "config": {
         "step": {
             "user": {
-                "title": "Connect to Tesira",
-                "description": "Enter the Tesira host and port for the TTP Telnet server.",
+                "title": "Connect your Tesira DSP",
+                "description": "Enter the Tesira DSP IP address and port for the TTP Telnet server.",
                 "data": {
-                    "host": "Host",
+                    "ip": "IP Address",
                     "port": "Port"
                 }
             },
             "reconfigure": {
-                "title": "Reconfigure Tesira connection",
-                "description": "Enter the new Tesira host and port for the TTP Telnet server.",
+                "title": "Reconfigure Tesira DSP connection",
+                "description": "Enter the new Tesira DSP IP address and port for the TTP Telnet server.",
                 "data": {
-                    "host": "Host",
+                    "ip": "IP Address",
                     "port": "Port"
                 }
             },
