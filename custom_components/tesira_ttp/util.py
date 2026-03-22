@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 21st 2026, 12:51:56 AM                                                                 #
-# Last Modified: Saturday, March 21st 2026, 12:52:11 AM                                                                #
+# Created Date: Sunday, March 22nd 2026, 1:21:35 AM                                                                    #
+# Last Modified: Sunday, March 22nd 2026, 5:43:18 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -10,7 +10,7 @@
 # Copyright (c) 2026 Darnel Kumar                                                                                      #
 # #################################################################################################################### #
 
-"""Utility helpers for building voluptuous schemas dynamically."""
+"""Utility helpers for tesira_ttp."""
 
 from __future__ import annotations
 
@@ -18,7 +18,9 @@ from typing import Any, Dict
 
 import voluptuous as vol
 
-
+# =====================================================================
+# Schema Helpers
+# =====================================================================
 def schema_with_defaults(
     base_schema: vol.Schema, defaults: Dict[str, Any]
 ) -> vol.Schema:
