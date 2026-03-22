@@ -33,10 +33,11 @@ Copy `custom_components/tesira_ttp/` to `/config/custom_components/tesira_ttp/` 
 
 Settings → Devices & services → Add integration → **Tesira TTP Volume (Telnet)**
 
-- Host / Port
+- ip / Port
 - Add your first control (name, instance tag, channel, min/max dB, step dB)
 
 To add more controls later:
+
 - Open the integration → **Configure** → Add / Edit / Remove controls
 
 ## Troubleshooting
@@ -59,5 +60,5 @@ A small helper is included:
 Run inside HA Core container on HAOS:
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 192.168.40.84 --tag volume --get
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --ip 192.168.40.84 --tag volume --get
 ```
