@@ -18,8 +18,8 @@ class TesiraTtpClient:
     Keeps one connection and serializes requests with a lock.
     """
 
-    def __init__(self, host: str, port: int = 23) -> None:
-        self._host = host
+    def __init__(self, ip: str, port: int = 23) -> None:
+        self._ip = ip
         self._port = port
         self._reader: Optional[telnetlib3.TelnetReader] = None
         self._writer: Optional[telnetlib3.TelnetWriter] = None
@@ -33,9 +33,9 @@ class TesiraTtpClient:
         if self.is_connected:
             return
 
-        _LOGGER.debug("Connecting Tesira TTP %s:%s", self._host, self._port)
+        _LOGGER.debug("Connecting Tesira TTP %s:%s", self._ip, self._port)
         self._reader, self._writer = await telnetlib3.open_connection(
-            self._host,
+            self._ip,
             self._port,
             shell=None,
             connect_minwait=0.1,
