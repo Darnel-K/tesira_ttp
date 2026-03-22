@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, March 22nd 2026, 6:44:13 PM                                                                   #
+# Last Modified: Sunday, March 22nd 2026, 6:53:52 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -584,17 +584,24 @@ class TesiraTtpClient:
 
     # ----------------------------------------------------------------------
     async def _read_raw(self, max_bytes=1024) -> str:
-        """Read raw text from Tesira using underlying protocol."""
+        """
+        Read raw data FROM THE SESSION BUFFER instead of the TelnetReader.
+        This avoids telnetlib3 read conflicts.
+        """
         if self._proto == "ssh":
+            # SSH safe to read directly:
             try:
                 return await asyncio.wait_for(self._client._chan.read(max_bytes), timeout=0.2)
             except:
                 return ""
-        else:
-            try:
-                return await asyncio.wait_for(self._client._reader.read(max_bytes), timeout=0.2)
-            except:
-                return ""
+
+        # TELNET SAFE PATH:
+        # Pull from buffered data gathered by _telnet_reader_task
+        await asyncio.sleep(0.05)  # allow buffer to fill
+        buf = self._client._session.buffer
+        self._client._session.buffer = ""  # consume it
+        return buf
+
 
     # ----------------------------------------------------------------------
     async def _drain_for(self, seconds: float) -> str:
