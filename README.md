@@ -40,18 +40,9 @@ Copy:
 
 into:
 
-<<<<<<< HEAD
 `/config/custom_components/tesira_ttp/`
 
 then restart Home Assistant.
-=======
-- ip / Port
-- Add your first control (name, instance tag, channel, min/max dB, step dB)
-
-To add more controls later:
-
-- Open the integration → **Configure** → Add / Edit / Remove controls
->>>>>>> develop
 
 ## Configuration
 
