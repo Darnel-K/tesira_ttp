@@ -61,16 +61,97 @@ logger:
 
 ## Development / CLI Testing
 
-A TTP command-line tester is included:
+An interactive CLI for testing Tesira TTP commands is included:
 
-```
-custom_components/tesira_ttp/tesira_cli.py
+`custom_components/tesira_ttp/tesira_cli.py`
+
+It provides a cross‑platform interactive shell (powered by `prompt_toolkit`)
+for sending Tesira TTP commands, receiving real‑time publish‑token event updates,
+and testing SSH or Telnet connectivity directly from the terminal.
+
+---
+
+### CLI Arguments
+
+```text
+--host <IP>         (Required) Tesira device IP address
+--proto <proto>     Protocol: "ssh" (default) or "telnet"
+--user <username>   Username (default: "default")
+--password <pass>   Password (default: blank)
+--port <port>       Override TCP port (defaults: SSH=22, Telnet=23)
 ```
 
-Example usage from HA Core on HAOS:
+### Connection Examples from HA Core on HAOS
+
+Below are example commands demonstrating different connection scenarios.
+
+#### Connect with SSH (default protocol)
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --ip 192.168.40.84 --tag volume --get
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx
+```
+
+or
+
+```bash
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --proto ssh
+```
+
+You do not need to specify '`--proto ssh`' when connecting with SSH
+
+#### Connect with non-default port (SSH)
+
+```bash
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --port 2222
+```
+
+#### Connect with username and blank password (SSH)
+
+```bash
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --user admin
+```
+
+#### Connect with username and password (SSH)
+
+```bash
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --user admin --password MySecretPass
+```
+
+#### Connect with non-default port, username and password (SSH)
+
+```bash
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --port 2222 --user admin --password MySecretPass
+```
+
+#### Connect with Telnet
+
+```bash
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --proto telnet
+```
+
+#### Connect with non-default port (Telnet)
+
+```bash
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --proto telnet --port 2323
+```
+
+### Command Examples
+
+After launching, you can enter commands such as:
+
+```text
+DEVICE get deviceInfo
+Level1 get level 1
+Level1 subscribe level 1 test1 100
+unsubscribe test1
+```
+
+Special commands include:
+
+```text
+:json <command>   → run a command and parse Tesira-style JSON
+:ping             → measure round‑trip latency
+:exit             → quit the CLI
 ```
 
 ## Acknowledgements
