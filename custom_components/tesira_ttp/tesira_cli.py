@@ -1,8 +1,8 @@
 # #################################################################################################################### #
-# Filename: \custom_components\tesira_ttp\tesira_shell.py                                                              #
+# Filename: \custom_components\tesira_ttp\tesira_cli.py                                                                #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Sunday, March 22nd 2026, 11:00:09 PM                                                                   #
-# Last Modified: Sunday, March 22nd 2026, 11:03:19 PM                                                                  #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Monday, March 23rd 2026, 12:13:59 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -11,20 +11,15 @@
 # #################################################################################################################### #
 #!/usr/bin/env python3
 """
-Tesira Interactive CLI
-Usage:
-    python3 tesira_cli.py --host 10.0.12.5 --proto ssh
+Tesira Interactive CLI using prompt_toolkit (Windows/Linux/Mac Compatible)
 """
 
 import asyncio
 import argparse
-from tesira_client import TesiraClient
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
 
-# readline on Linux/Mac; dummy on Windows (optional enhancement below)
-try:
-    import readline
-except ImportError:
-    readline = None
+from tesira_client import TesiraClient
 
 
 BANNER = r"""
@@ -48,60 +43,74 @@ Special commands:
 """
 
 
-async def subscription_printer(event: dict):
-    """Print incoming publish-token events live."""
-    print(f"\n[EVENT] {event}")
-    print("TTP> ", end="", flush=True)
+async def subscription_printer(event: dict, session: PromptSession):
+    # Print event above the input line
+    print(f"[EVENT] {event}")
+
+    # Safely request a prompt redraw
+    app = session.app
+    if app is not None:
+        app.invalidate()
 
 
 async def interactive_shell(client: TesiraClient):
     print(BANNER)
 
-    # Attach subscription callback
-    client._event_callback = subscription_printer
+    # Prompt toolkit session (handles async-safe input line)
+    session = PromptSession("TTP> ")
 
-    loop = asyncio.get_event_loop()
+    # Assign global callback (wrapped so we can access session)
+    async def printer(event):
+        await subscription_printer(event, session)
 
-    while True:
-        # Run user input without blocking the event loop
-        cmd = await loop.run_in_executor(None, lambda: input("TTP> ").strip())
+    client._event_callback = printer
 
-        if not cmd:
-            continue
+    # Keep terminal safe while async printing occurs
+    with patch_stdout():
+        while True:
+            try:
+                cmd = await session.prompt_async()
+            except (EOFError, KeyboardInterrupt):
+                print("Exiting.")
+                break
 
-        if cmd.lower() in (":exit", "exit", "quit"):
-            print("Disconnecting...")
-            await client.disconnect()
-            print("Bye!")
-            return
-
-        if cmd.startswith(":json"):
-            real_cmd = cmd[6:].strip()
-            if not real_cmd:
-                print("Usage: :json <TTP command>")
+            cmd = cmd.strip()
+            if not cmd:
                 continue
 
+            if cmd.lower() in (":exit", "exit", "quit"):
+                print("Disconnecting...")
+                await client.disconnect()
+                print("Bye!")
+                return
+
+            if cmd.startswith(":json"):
+                real_cmd = cmd[6:].strip()
+                if not real_cmd:
+                    print("Usage: :json <TTP command>")
+                    continue
+
+                try:
+                    result = await client.json(real_cmd)
+                    print(result)
+                except Exception as e:
+                    print("ERROR:", e)
+                continue
+
+            if cmd == ":ping":
+                try:
+                    ms = await client.ping()
+                    print(f"Ping: {ms:.2f} ms")
+                except Exception as e:
+                    print("Ping ERROR:", e)
+                continue
+
+            # Normal TTP command
             try:
-                result = await client.json(real_cmd)
+                result = await client.command(cmd)
                 print(result)
             except Exception as e:
                 print("ERROR:", e)
-            continue
-
-        if cmd == ":ping":
-            try:
-                ms = await client.ping()
-                print(f"Ping: {ms:.2f} ms")
-            except Exception as e:
-                print("Ping ERROR:", e)
-            continue
-
-        # Normal TTP command
-        try:
-            result = await client.command(cmd)
-            print(result)
-        except Exception as e:
-            print("ERROR:", e)
 
 
 async def main():
@@ -131,4 +140,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nExiting terminal.")
+        print("\nExiting.")
