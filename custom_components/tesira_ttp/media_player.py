@@ -44,10 +44,10 @@ def level01_to_db(level01: float, min_db: float, max_db: float) -> float:
     return min_db + level01 * (max_db - min_db)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
-    # Find shared hub by ip:port
-    ip = entry.data[CONF_IP]
+    # Find shared hub by host:port
+    host = entry.data[CONF_IP]
     port = entry.data[CONF_PORT]
-    hubkey = f"{ip}:{port}"
+    hubkey = f"{host}:{port}"
     hub: TesiraHub = hass.data[DOMAIN]["hubs"][hubkey]
 
     controls: list[dict[str, Any]] = list(entry.options.get(CONF_CONTROLS, []))
@@ -60,7 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         min_db = float(c.get(CONF_MIN_DB, DEFAULT_MIN_DB))
         max_db = float(c.get(CONF_MAX_DB, DEFAULT_MAX_DB))
         step_db = float(c.get(CONF_STEP_DB, DEFAULT_STEP_DB))
-        entities.append(TesiraVolumeMediaPlayer(hub, ip, port, name, tag, ch, min_db, max_db, step_db))
+        entities.append(TesiraVolumeMediaPlayer(hub, host, port, name, tag, ch, min_db, max_db, step_db))
 
     async_add_entities(entities, update_before_add=True)
 
@@ -70,7 +70,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
     def __init__(
         self,
         hub: TesiraHub,
-        ip: str,
+        host: str,
         port: int,
         name: str,
         instance_tag: str,
@@ -80,7 +80,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
         step_db: float,
     ) -> None:
         self._hub = hub
-        self._ip = ip
+        self._host = host
         self._port = port
         self._tag = instance_tag
         self._ch = channel
@@ -89,7 +89,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
         self._step_db = step_db
 
         self._attr_name = name
-        self._attr_unique_id = f"tesira_ttp_{ip}_{port}_{self._tag}_{self._ch}".lower()
+        self._attr_unique_id = f"tesira_ttp_{host}_{port}_{self._tag}_{self._ch}".lower()
 
         self._attr_supported_features = (
             MediaPlayerEntityFeature.VOLUME_SET
@@ -134,7 +134,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
                 pass
 
         except Exception as e:
-            _LOGGER.debug("Update failed for %s/%s ch %s: %s", self._ip, self._tag, self._ch, e)
+            _LOGGER.debug("Update failed for %s/%s ch %s: %s", self._host, self._tag, self._ch, e)
             self._attr_available = False
             self._attr_state = MediaPlayerState.UNAVAILABLE
 

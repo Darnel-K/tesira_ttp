@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, March 22nd 2026, 12:45:03 AM                                                                  #
+# Created Date: Sunday, March 22nd 2026, 10:04:37 PM                                                                   #
+# Last Modified: Wednesday, March 25th 2026, 10:59:31 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -39,7 +39,7 @@ from .const import (
     DEFAULT_MAX_DB,
     DEFAULT_STEP_DB
 )
-from .tesira_client import TesiraTtpClient
+from .tesira_client import TesiraClient
 from .util import schema_with_defaults
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,27 +71,30 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            ip = user_input[CONF_IP]
+            host = user_input[CONF_IP]
             port = user_input[CONF_PORT]
 
-            # Use ip:port as unique key so a Tesira device is only configured once.
-            await self.async_set_unique_id(f"{ip}:{port}")
+            # Use host:port as unique key so a Tesira device is only configured once.
+            await self.async_set_unique_id(f"{host}:{port}")
             self._abort_if_unique_id_configured()
 
             # Quick connectivity probe.
             try:
-                client = TesiraTtpClient(ip, port)
+                client = TesiraClient(host, port=port, proto="telnet")
                 await client.connect()
-                await client.close()
+                if client._conn is not None:
+                    await client.disconnect()
+                else:
+                    raise ConnectionError("Failed to establish connection")
             except Exception as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
-            self.context["ip"] = ip
+            self.context["host"] = host
             self.context["port"] = port
-            title = f"Tesira {ip}:{port}"
-            return self.async_create_entry(title=title, data={CONF_IP: ip, CONF_PORT: port})
+            title = f"Tesira {host}:{port}"
+            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port})
 
         return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
@@ -106,22 +109,25 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = schema_with_defaults(STEP_USER_SCHEMA, defaults)
 
         if user_input is not None:
-            ip = user_input[CONF_IP]
+            host = user_input[CONF_IP]
             port = user_input[CONF_PORT]
 
-            await self.async_set_unique_id(f"{ip}:{port}")
+            await self.async_set_unique_id(f"{host}:{port}")
             self._abort_if_unique_id_configured()
 
             try:
-                client = TesiraTtpClient(ip, port)
+                client = TesiraClient(host, port=port, proto="telnet")
                 await client.connect()
-                await client.close()
+                if client._conn is not None:
+                    await client.disconnect()
+                else:
+                    raise ConnectionError("Failed to establish connection")
             except Exception as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 
-            self.context["ip"] = ip
+            self.context["host"] = host
             self.context["port"] = port
             return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
 

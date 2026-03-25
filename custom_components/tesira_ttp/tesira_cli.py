@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_cli.py                                                                #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Monday, March 23rd 2026, 12:13:59 AM                                                                  #
+# Last Modified: Wednesday, March 25th 2026, 11:01:54 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -115,7 +115,7 @@ async def interactive_shell(client: TesiraClient):
 
 async def main():
     parser = argparse.ArgumentParser(description="Tesira Interactive CLI")
-    parser.add_argument("--host", required=True, help="Tesira Host IP")
+    parser.add_argument("--host", required=True, help="Tesira Host")
     parser.add_argument("--proto", default="ssh", choices=["ssh", "telnet"], help="Protocol")
     parser.add_argument("--user", default="default", help="Username")
     parser.add_argument("--password", default="", help="Password")

@@ -26,14 +26,14 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    ip = entry.data[CONF_IP]
+    host = entry.data[CONF_IP]
     port = entry.data[CONF_PORT]
 
     hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
-    hubkey = f"{ip}:{port}"
+    hubkey = f"{host}:{port}"
     hub = hubs.get(hubkey)
     if hub is None:
-        hub = TesiraHub(ip, port)
+        hub = TesiraHub(host, port)
         hubs[hubkey] = hub
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 

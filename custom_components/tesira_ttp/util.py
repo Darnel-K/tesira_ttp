@@ -1,8 +1,19 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Sunday, March 22nd 2026, 1:21:35 AM                                                                    #
-# Last Modified: Sunday, March 22nd 2026, 5:43:18 PM                                                                   #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, March 25th 2026, 11:00:28 PM                                                               #
+# Original Author: Darnel Kumar                                                                                        #
+# Author Github: https://github.com/Darnel-K                                                                           #
+#                                                                                                                      #
+# This code complies with: https://gist.github.com/Darnel-K/8badda0cabdabb15359350f7af911c90                           #
+# Copyright (c) 2026 Darnel Kumar                                                                                      #
+# #################################################################################################################### #
+# #################################################################################################################### #
+# Filename: \custom_components\tesira_ttp\util.py                                                                      #
+# Repository: tesira_ttp                                                                                               #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, March 25th 2026, 11:00:28 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
