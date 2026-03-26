@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, March 25th 2026, 11:16:42 PM                                                               #
+# Last Modified: Wednesday, March 25th 2026, 11:43:26 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -57,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hubkey = f"{host}:{port}"
     hub = hubs.get(hubkey)
     if hub is None:
-        hub = TesiraHub(host=host, port=port)
+        hub = TesiraHub(host=host, port=port, safe_mode=True)
         hubs[hubkey] = hub
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 
