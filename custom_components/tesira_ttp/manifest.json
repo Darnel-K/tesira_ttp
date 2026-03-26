@@ -1,6 +1,6 @@
 {
     "domain": "tesira_ttp",
-    "name": "Tesira TTP Control (Telnet)",
+    "name": "Tesira Text Protocol (SSH & Telnet)",
     "codeowners": [
         "@Darnel-K"
     ],
