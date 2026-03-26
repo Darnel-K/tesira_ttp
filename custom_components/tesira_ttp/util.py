@@ -1,26 +1,27 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, March 25th 2026, 11:00:28 PM                                                               #
+# Created Date: Sunday, March 22nd 2026, 10:04:37 PM                                                                   #
+# Last Modified: Thursday, March 26th 2026, 12:25:23 AM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
-# This code complies with: https://gist.github.com/Darnel-K/8badda0cabdabb15359350f7af911c90                           #
+# License: GNU Affero General Public License v3.0 only - https://www.gnu.org/licenses/agpl.txt                         #
 # Copyright (c) 2026 Darnel Kumar                                                                                      #
-# #################################################################################################################### #
-# #################################################################################################################### #
-# Filename: \custom_components\tesira_ttp\util.py                                                                      #
-# Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, March 25th 2026, 11:00:28 PM                                                               #
-# Original Author: Darnel Kumar                                                                                        #
-# Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
-# This code complies with: https://gist.github.com/Darnel-K/8badda0cabdabb15359350f7af911c90                           #
-# Copyright (c) 2026 Darnel Kumar                                                                                      #
+# This program is free software: you can redistribute it and/or modify                                                 #
+# it under the terms of the GNU Affero General Public License as published                                             #
+# by the Free Software Foundation, either version 3 of the License, or                                                 #
+# (at your option) any later version.                                                                                  #
+#                                                                                                                      #
+# This program is distributed in the hope that it will be useful,                                                      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                        #
+# GNU Affero General Public License for more details.                                                                  #
+#                                                                                                                      #
+# You should have received a copy of the GNU Affero General Public License                                             #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
 # #################################################################################################################### #
-
 """Utility helpers for tesira_ttp."""
 
 from __future__ import annotations
