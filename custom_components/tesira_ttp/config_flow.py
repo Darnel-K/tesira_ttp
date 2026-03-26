@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Sunday, March 22nd 2026, 10:04:37 PM                                                                   #
-# Last Modified: Wednesday, March 25th 2026, 10:59:31 PM                                                               #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, March 25th 2026, 11:46:47 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -80,7 +80,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Quick connectivity probe.
             try:
-                client = TesiraClient(host, port=port, proto="telnet")
+                client = TesiraClient(host, port=port)
                 await client.connect()
                 if client._conn is not None:
                     await client.disconnect()
@@ -116,7 +116,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
             try:
-                client = TesiraClient(host, port=port, proto="telnet")
+                client = TesiraClient(host, port=port)
                 await client.connect()
                 if client._conn is not None:
                     await client.disconnect()
