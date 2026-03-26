@@ -1,3 +1,27 @@
+# #################################################################################################################### #
+# Filename: \custom_components\tesira_ttp\media_player.py                                                              #
+# Repository: tesira_ttp                                                                                               #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, March 25th 2026, 11:57:27 PM                                                               #
+# Original Author: Darnel Kumar                                                                                        #
+# Author Github: https://github.com/Darnel-K                                                                           #
+#                                                                                                                      #
+# License: GNU Affero General Public License v3.0 only - https://www.gnu.org/licenses/agpl.txt                         #
+# Copyright (c) 2026 Darnel Kumar                                                                                      #
+#                                                                                                                      #
+# This program is free software: you can redistribute it and/or modify                                                 #
+# it under the terms of the GNU Affero General Public License as published                                             #
+# by the Free Software Foundation, either version 3 of the License, or                                                 #
+# (at your option) any later version.                                                                                  #
+#                                                                                                                      #
+# This program is distributed in the hope that it will be useful,                                                      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                        #
+# GNU Affero General Public License for more details.                                                                  #
+#                                                                                                                      #
+# You should have received a copy of the GNU Affero General Public License                                             #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
+# #################################################################################################################### #
 from __future__ import annotations
 
 import logging
@@ -27,7 +51,6 @@ from .const import (
     DEFAULT_STEP_DB,
 )
 from .hub import TesiraHub
-from .tesira_client import parse_bool, parse_first_float
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -115,8 +138,8 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
 
     async def async_update(self) -> None:
         try:
-            resp = await self._hub.send_and_wait(f"{self._tag} get level {self._ch}", timeout=2.0)
-            level = parse_first_float(resp)
+            resp = await self._hub.json(f"{self._tag} get level {self._ch}")
+            level = resp["value"]
             if level is None:
                 raise ValueError(f"Could not parse level from response: {resp!r}")
 
@@ -126,8 +149,8 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
 
             # mute is best-effort
             try:
-                resp_m = await self._hub.send_and_wait(f"{self._tag} get mute {self._ch}", timeout=1.0)
-                muted = parse_bool(resp_m)
+                resp_m = await self._hub.json(f"{self._tag} get mute {self._ch}")
+                muted = resp_m['value']
                 if muted is not None:
                     self._muted = muted
             except Exception:
@@ -140,27 +163,18 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
 
     async def async_set_volume_level(self, volume: float) -> None:
         db = level01_to_db(volume, self._min_db, self._max_db)
-        await self._hub.send_and_wait(f"{self._tag} set level {self._ch} {db:.3f}", timeout=2.0)
+        await self._hub.json(f"{self._tag} set level {self._ch} {db:.3f}")
         self._level_db = db
 
     async def async_volume_up(self) -> None:
-        await self._hub.send_and_wait(
-            f"{self._tag} increment level {self._ch} {self._step_db:.3f}",
-            timeout=2.0,
-        )
+        await self._hub.json(f"{self._tag} increment level {self._ch} {self._step_db:.3f}")
 
     async def async_volume_down(self) -> None:
-        await self._hub.send_and_wait(
-            f"{self._tag} increment level {self._ch} {-self._step_db:.3f}",
-            timeout=2.0,
-        )
+        await self._hub.json(f"{self._tag} increment level {self._ch} {-self._step_db:.3f}")
 
     async def async_mute_volume(self, mute: bool) -> None:
-        resp = await self._hub.send_and_wait(
-            f"{self._tag} set mute {self._ch} {'true' if mute else 'false'}",
-            timeout=2.0,
-        )
-        if "-ERR" in resp:
-            _LOGGER.warning("Mute command returned error for %s: %s", self.entity_id, resp)
+        resp = await self._hub.json(f"{self._tag} set mute {self._ch} {'true' if mute else 'false'}")
+        if "error" in resp:
+            _LOGGER.warning("Mute command returned error for %s: %s", self.entity_id, resp['error'])
         else:
             self._muted = mute
