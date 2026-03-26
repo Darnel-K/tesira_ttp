@@ -1,3 +1,27 @@
+# #################################################################################################################### #
+# Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
+# Repository: tesira_ttp                                                                                               #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, March 25th 2026, 11:43:26 PM                                                               #
+# Original Author: Darnel Kumar                                                                                        #
+# Author Github: https://github.com/Darnel-K                                                                           #
+#                                                                                                                      #
+# License: GNU Affero General Public License v3.0 only - https://www.gnu.org/licenses/agpl.txt                         #
+# Copyright (c) 2026 Darnel Kumar                                                                                      #
+#                                                                                                                      #
+# This program is free software: you can redistribute it and/or modify                                                 #
+# it under the terms of the GNU Affero General Public License as published                                             #
+# by the Free Software Foundation, either version 3 of the License, or                                                 #
+# (at your option) any later version.                                                                                  #
+#                                                                                                                      #
+# This program is distributed in the hope that it will be useful,                                                      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                        #
+# GNU Affero General Public License for more details.                                                                  #
+#                                                                                                                      #
+# You should have received a copy of the GNU Affero General Public License                                             #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
+# #################################################################################################################### #
 from __future__ import annotations
 
 import logging
@@ -26,14 +50,14 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    ip = entry.data[CONF_IP]
+    host = entry.data[CONF_IP]
     port = entry.data[CONF_PORT]
 
     hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
-    hubkey = f"{ip}:{port}"
+    hubkey = f"{host}:{port}"
     hub = hubs.get(hubkey)
     if hub is None:
-        hub = TesiraHub(ip, port)
+        hub = TesiraHub(host=host, port=port, safe_mode=True)
         hubs[hubkey] = hub
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 
@@ -54,7 +78,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if hubkey not in hass.data[DOMAIN][DATA_ENTRY_HUBKEY].values():
             hub = hubs.pop(hubkey, None)
             if hub:
-                await hub.close()
+                await hub.disconnect()
                 _LOGGER.debug("Closed Tesira hub for %s", hubkey)
 
     return unload_ok

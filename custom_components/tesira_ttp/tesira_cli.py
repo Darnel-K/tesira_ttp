@@ -2,12 +2,25 @@
 # Filename: \custom_components\tesira_ttp\tesira_cli.py                                                                #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Monday, March 23rd 2026, 12:13:59 AM                                                                  #
+# Last Modified: Thursday, March 26th 2026, 12:26:02 AM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
-# This code complies with: https://gist.github.com/Darnel-K/8badda0cabdabb15359350f7af911c90                           #
+# License: GNU Affero General Public License v3.0 only - https://www.gnu.org/licenses/agpl.txt                         #
 # Copyright (c) 2026 Darnel Kumar                                                                                      #
+#                                                                                                                      #
+# This program is free software: you can redistribute it and/or modify                                                 #
+# it under the terms of the GNU Affero General Public License as published                                             #
+# by the Free Software Foundation, either version 3 of the License, or                                                 #
+# (at your option) any later version.                                                                                  #
+#                                                                                                                      #
+# This program is distributed in the hope that it will be useful,                                                      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                        #
+# GNU Affero General Public License for more details.                                                                  #
+#                                                                                                                      #
+# You should have received a copy of the GNU Affero General Public License                                             #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
 # #################################################################################################################### #
 #!/usr/bin/env python3
 """
@@ -115,7 +128,7 @@ async def interactive_shell(client: TesiraClient):
 
 async def main():
     parser = argparse.ArgumentParser(description="Tesira Interactive CLI")
-    parser.add_argument("--host", required=True, help="Tesira Host IP")
+    parser.add_argument("--host", required=True, help="Tesira Host")
     parser.add_argument("--proto", default="ssh", choices=["ssh", "telnet"], help="Protocol")
     parser.add_argument("--user", default="default", help="Username")
     parser.add_argument("--password", default="", help="Password")

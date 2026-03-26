@@ -1,13 +1,26 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Sunday, March 22nd 2026, 11:00:09 PM                                                                   #
-# Last Modified: Sunday, March 22nd 2026, 11:10:00 PM                                                                  #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Thursday, March 26th 2026, 12:26:09 AM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
-# This code complies with: https://gist.github.com/Darnel-K/8badda0cabdabb15359350f7af911c90                           #
+# License: GNU Affero General Public License v3.0 only - https://www.gnu.org/licenses/agpl.txt                         #
 # Copyright (c) 2026 Darnel Kumar                                                                                      #
+#                                                                                                                      #
+# This program is free software: you can redistribute it and/or modify                                                 #
+# it under the terms of the GNU Affero General Public License as published                                             #
+# by the Free Software Foundation, either version 3 of the License, or                                                 #
+# (at your option) any later version.                                                                                  #
+#                                                                                                                      #
+# This program is distributed in the hope that it will be useful,                                                      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                        #
+# GNU Affero General Public License for more details.                                                                  #
+#                                                                                                                      #
+# You should have received a copy of the GNU Affero General Public License                                             #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
 # #################################################################################################################### #
 from __future__ import annotations
 
@@ -21,44 +34,7 @@ import time
 import logging
 import inspect
 
-# For backward compatibility, this module still contains the old TesiraTtpClient class,
-# but it is now a wrapper around the new TesiraClient which supports both SSH and Telnet. The new TesiraClient is more robust and feature-rich, while TesiraTtpClient preserves the old API for existing code. New code should use TesiraClient directly for better performance and reliability.
-from typing import Optional
-
 _LOGGER = logging.getLogger(__name__)
-
-# =====================================================================
-# Legacy Parser Helper Functions (module-level for imports)
-# =====================================================================
-def parse_first_float(text: str) -> Optional[float]:
-    m = re.search(r'"value"\s*:\s*(-?\d+(?:\.\d+)?)', text)
-    if m:
-        try:
-            return float(m.group(1))
-        except Exception:
-            pass
-
-    m = re.search(r'(-?\d+(?:\.\d+)?)', text)
-    if m:
-        try:
-            return float(m.group(1))
-        except Exception:
-            pass
-
-    return None
-
-
-def parse_bool(text: str) -> Optional[bool]:
-    s = text.lower()
-    if "true" in s:
-        return True
-    if "false" in s:
-        return False
-    if re.search(r'\b1\b', s):
-        return True
-    if re.search(r'\b0\b', s):
-        return False
-    return None
 
 # =====================================================================
 # Exceptions
@@ -96,7 +72,7 @@ class TesiraClient:
         heartbeat_failure_threshold: int = 3,
         heartbeat_jitter: float = 1.5,
 
-        safe_mode=False,
+        safe_mode=False
     ):
         # -----------------------------------------------------------------
         # Protocol validation
@@ -528,155 +504,3 @@ class TesiraClient:
 
     async def queue(self, cmd: str):
         return await self.command(cmd)
-
-
-_OK_RE = re.compile(r"\+OK", re.IGNORECASE)
-_ERR_RE = re.compile(r"-ERR", re.IGNORECASE)
-
-class TesiraTtpClient:
-    """
-    Full backwards‑compatible wrapper for the old TesiraTtpClient API.
-    Internally uses the new TesiraClient, but preserves:
-        - raw output rules
-        - CRLF behavior
-        - timeout behavior
-        - connect()
-        - close()
-        - send_and_wait()
-        - parse helpers
-    """
-
-    def __init__(self, ip: str, port: int = 23, proto: str = "telnet",
-                 user: str = "default", password: str = None):
-
-        from .tesira_client import TesiraClient
-
-        proto = proto.strip().lower()
-        if proto == "telnet":
-            _LOGGER.warning(
-                "Using Telnet protocol is not recommended. For more information, see https://support.biamp.com/Tesira/Control/Tesira_security_best_practices"
-            )
-            if user != "default" or password not in (None, ""):
-                raise NotImplementedError(
-                    "Telnet only supports user='default' + blank password."
-                )
-        elif proto != "ssh":
-            raise ValueError(f"Unsupported proto={proto!r}")
-
-        # Use new TesiraClient internally
-        self._client = TesiraClient(
-            host=ip,
-            username=user,
-            password=password or "",
-            port=port,
-            proto=proto,
-        )
-
-        self._lock = asyncio.Lock()
-        self._proto = proto
-        self._ip = ip
-        self._port = port
-
-    # ----------------------------------------------------------------------
-    @property
-    def is_connected(self) -> bool:
-        # old behavior: true if connection exists and not closing
-        return self._client._conn is not None
-
-    # ----------------------------------------------------------------------
-    async def connect(self) -> None:
-        """Old behavior: connect and drain banner."""
-        await self._client.connect()
-
-        # OLD CLIENT drained banner for 1 second.
-        # We emulate that for backwards compatibility.
-        await self._drain_for(1.0)
-
-        # OLD CLIENT nudged prompt readiness with CRLF
-        await self._send_raw("\r\n")
-        await asyncio.sleep(0.3)  # old timing
-
-    # ----------------------------------------------------------------------
-    async def close(self) -> None:
-        await self._client.disconnect()
-
-    # ----------------------------------------------------------------------
-    async def _send_raw(self, text: str) -> None:
-        """Send raw text to Tesira using underlying protocol."""
-        if self._proto == "ssh":
-            self._client._chan.write(text)
-        else:
-            self._client._writer.write(text)
-
-    # ----------------------------------------------------------------------
-    async def _read_raw(self, max_bytes=1024) -> str:
-        """
-        Read raw data FROM THE SESSION BUFFER instead of the TelnetReader.
-        This avoids telnetlib3 read conflicts.
-        """
-        if self._proto == "ssh":
-            # SSH safe to read directly:
-            try:
-                return await asyncio.wait_for(self._client._chan.read(max_bytes), timeout=0.2)
-            except:
-                return ""
-
-        # TELNET SAFE PATH:
-        # Pull from buffered data gathered by _telnet_reader_task
-        await asyncio.sleep(0.05)  # allow buffer to fill
-        buf = self._client._session.buffer
-        self._client._session.buffer = ""  # consume it
-        return buf
-
-
-    # ----------------------------------------------------------------------
-    async def _drain_for(self, seconds: float) -> str:
-        """Old behavior: read whatever arrives for N seconds."""
-        end = asyncio.get_running_loop().time() + seconds
-        buf = []
-        while asyncio.get_running_loop().time() < end:
-            chunk = await self._read_raw()
-            if chunk:
-                buf.append(chunk)
-        return "".join(buf)
-
-    # ----------------------------------------------------------------------
-    async def send_and_wait(self, line: str, timeout: float = 1.0) -> str:
-        """
-        EXACT old behavior:
-          - sends raw line
-          - reads raw text until +OK or -ERR
-          - returns the FULL raw blob, not the cleaned line.
-        """
-        async with self._lock:
-            await self.connect()
-
-            # normalize CRLF
-            line = line.rstrip("\r\n")
-            payload = line + "\r\n"
-
-            await self._send_raw(payload)
-
-            acc = ""
-            end = asyncio.get_running_loop().time() + timeout
-
-            while asyncio.get_running_loop().time() < end:
-                chunk = await self._read_raw()
-                if not chunk:
-                    continue
-                acc += chunk
-                if _OK_RE.search(acc) or _ERR_RE.search(acc):
-                    break
-
-            return acc  # return EXACT raw output
-
-    # ----------------------------------------------------------------------
-    # Parsing helpers EXACTLY as before
-    # ----------------------------------------------------------------------
-    @staticmethod
-    def parse_first_float(text: str) -> Optional[float]:
-        return parse_first_float(text)
-
-    @staticmethod
-    def parse_bool(text: str) -> Optional[bool]:
-        return parse_bool(text)
