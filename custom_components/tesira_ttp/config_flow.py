@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Thursday, March 26th 2026, 12:26:28 AM                                                                #
+# Last Modified: Thursday, March 26th 2026, 11:22:06 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -30,7 +30,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.helpers.selector import selector
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
@@ -38,6 +38,7 @@ from .const import (
     DOMAIN,
     CONF_IP,
     CONF_PORT,
+    CONF_PROTO,
     CONF_CONTROLS,
     CONF_CONTROL_NAME,
     CONF_INSTANCE_TAG,
@@ -46,6 +47,7 @@ from .const import (
     CONF_MAX_DB,
     CONF_STEP_DB,
     DEFAULT_PORT,
+    DEFAULT_PROTO,
     DEFAULT_CONTROL_NAME,
     DEFAULT_CHANNEL,
     DEFAULT_MIN_DB,
@@ -61,6 +63,14 @@ STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_IP): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+        vol.Required(CONF_PROTO, default=DEFAULT_PROTO): selector({
+            "select": {
+                "options": [
+                    {"value": "ssh", "label": "SSH"},
+                    {"value": "telnet", "label": "Telnet"}
+                ]
+            }
+        })
     }
 )
 
@@ -86,6 +96,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             host = user_input[CONF_IP]
             port = user_input[CONF_PORT]
+            proto = user_input[CONF_PROTO]
 
             # Use host:port as unique key so a Tesira device is only configured once.
             await self.async_set_unique_id(f"{host}:{port}")
@@ -93,7 +104,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Quick connectivity probe.
             try:
-                client = TesiraClient(host, port=port)
+                client = TesiraClient(host=host, port=port, proto=proto)
                 await client.connect()
                 if client._conn is not None:
                     await client.disconnect()
@@ -124,12 +135,13 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             host = user_input[CONF_IP]
             port = user_input[CONF_PORT]
+            proto = user_input[CONF_PROTO]
 
             await self.async_set_unique_id(f"{host}:{port}")
             self._abort_if_unique_id_configured()
 
             try:
-                client = TesiraClient(host, port=port)
+                client = TesiraClient(host=host, port=port, proto=proto)
                 await client.connect()
                 if client._conn is not None:
                     await client.disconnect()
