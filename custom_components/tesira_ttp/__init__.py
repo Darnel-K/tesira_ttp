@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, March 25th 2026, 11:43:26 PM                                                               #
+# Last Modified: Thursday, March 26th 2026, 11:43:51 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -30,7 +30,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT
+from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT, CONF_PROTO
 from .hub import TesiraHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,12 +52,13 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     host = entry.data[CONF_IP]
     port = entry.data[CONF_PORT]
+    proto = entry.data[CONF_PROTO]
 
     hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
-    hubkey = f"{host}:{port}"
+    hubkey = f"{host}:{port}:{proto}"
     hub = hubs.get(hubkey)
     if hub is None:
-        hub = TesiraHub(host=host, port=port, safe_mode=True)
+        hub = TesiraHub(host=host, port=port, proto=proto, safe_mode=True)
         hubs[hubkey] = hub
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 

@@ -6,7 +6,8 @@
                 "description": "Enter the Tesira DSP host and port for the Tesira Text Protocol server.",
                 "data": {
                     "host": "Host",
-                    "port": "Port"
+                    "port": "Port",
+                    "protocol": "Protocol"
                 }
             },
             "reconfigure": {
@@ -14,7 +15,8 @@
                 "description": "Enter the new Tesira DSP host and port for the Tesira Text Protocol server.",
                 "data": {
                     "host": "Host",
-                    "port": "Port"
+                    "port": "Port",
+                    "protocol": "Protocol"
                 }
             },
             "control": {
