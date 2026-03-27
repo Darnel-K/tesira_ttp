@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, March 25th 2026, 11:57:27 PM                                                               #
+# Last Modified: Thursday, March 26th 2026, 11:30:26 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -44,6 +44,7 @@ from .const import (
     CONF_STEP_DB,
     CONF_IP,
     CONF_PORT,
+    CONF_PROTO,
     DEFAULT_CONTROL_NAME,
     DEFAULT_CHANNEL,
     DEFAULT_MIN_DB,
@@ -70,7 +71,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # Find shared hub by host:port
     host = entry.data[CONF_IP]
     port = entry.data[CONF_PORT]
-    hubkey = f"{host}:{port}"
+    proto = entry.data[CONF_PROTO]
+    hubkey = f"{host}:{port}:{proto}"
     hub: TesiraHub = hass.data[DOMAIN]["hubs"][hubkey]
 
     controls: list[dict[str, Any]] = list(entry.options.get(CONF_CONTROLS, []))

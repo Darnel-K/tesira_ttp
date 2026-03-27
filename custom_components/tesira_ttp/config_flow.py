@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Thursday, March 26th 2026, 11:22:06 PM                                                                #
+# Last Modified: Friday, March 27th 2026, 12:16:37 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -99,7 +99,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             proto = user_input[CONF_PROTO]
 
             # Use host:port as unique key so a Tesira device is only configured once.
-            await self.async_set_unique_id(f"{host}:{port}")
+            await self.async_set_unique_id(f"{host}:{port}:{proto}")
             self._abort_if_unique_id_configured()
 
             # Quick connectivity probe.
@@ -117,8 +117,9 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             self.context["host"] = host
             self.context["port"] = port
+            self.context["protocol"] = proto
             title = f"Tesira {host}:{port}"
-            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port})
+            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port, CONF_PROTO: proto})
 
         return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
@@ -129,6 +130,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         defaults = {
             CONF_IP: entry.data.get(CONF_IP),
             CONF_PORT: entry.data.get(CONF_PORT),
+            CONF_PROTO: entry.data.get(CONF_PROTO),
         }
         schema = schema_with_defaults(STEP_USER_SCHEMA, defaults)
 
@@ -137,8 +139,10 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             port = user_input[CONF_PORT]
             proto = user_input[CONF_PROTO]
 
-            await self.async_set_unique_id(f"{host}:{port}")
-            self._abort_if_unique_id_configured()
+            new_unique_id = f"{host}:{port}:{proto}"
+            for config_entry in self.hass.config_entries.async_entries(DOMAIN):
+                if config_entry.unique_id == new_unique_id and config_entry.entry_id != entry.entry_id:
+                    return self.async_abort(reason="already_configured")
 
             try:
                 client = TesiraClient(host=host, port=port, proto=proto)
@@ -154,7 +158,8 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             self.context["host"] = host
             self.context["port"] = port
-            return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
+            self.context["protocol"] = proto
+            return self.async_update_reload_and_abort(entry, data_updates=user_input)
 
         return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 
