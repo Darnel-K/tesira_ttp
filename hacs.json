@@ -1,5 +1,5 @@
 {
-    "name": "Tesira TTP Control (Telnet)",
+    "name": "Tesira Text Protocol (SSH & Telnet)",
     "content_in_root": false,
     "homeassistant": "2026.3.2"
 }
