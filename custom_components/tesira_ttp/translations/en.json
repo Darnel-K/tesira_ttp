@@ -7,7 +7,9 @@
                 "data": {
                     "host": "Host",
                     "port": "Port",
-                    "protocol": "Protocol"
+                    "protocol": "Protocol",
+                    "username": "Username (SSH only)",
+                    "password": "Password (SSH only)"
                 }
             },
             "reconfigure": {
@@ -16,7 +18,9 @@
                 "data": {
                     "host": "Host",
                     "port": "Port",
-                    "protocol": "Protocol"
+                    "protocol": "Protocol",
+                    "username": "Username (SSH only)",
+                    "password": "Password (SSH only)"
                 }
             },
             "control": {
