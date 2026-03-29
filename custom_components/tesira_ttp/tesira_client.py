@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, March 29th 2026, 12:00:51 AM                                                                  #
+# Last Modified: Sunday, March 29th 2026, 12:14:05 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -269,8 +269,8 @@ class TesiraClient:
             except Exception as e:
                 _LOGGER.error("[NET] Connection attempt (%s) failed (%s), retrying in %s s", attempt, e, backoff)
                 if attempt == max_retries:
-                    _LOGGER.error(f"[NET] Connection failed after {max_retries} attempts: {e}")
-                    raise ConnectionError(f"Failed to connect after {max_retries} attempts: {e}")
+                    _LOGGER.error(f"[NET] Maximum connection attempts reached: {e}")
+                    raise TesiraConnectionError(f"Maximum connection attempts reached: {e}")
                 await asyncio.sleep(backoff)
 
 
