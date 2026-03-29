@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Thursday, March 26th 2026, 12:26:09 AM                                                                #
+# Last Modified: Sunday, March 29th 2026, 12:00:51 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -204,68 +204,74 @@ class TesiraClient:
     # =====================================================================
     # CONNECT (SSH + TELNET)
     # =====================================================================
-    async def connect(self, attempt=1):
+    async def connect(self, max_retries=5):
         if self._conn:
             return
 
-        backoff = min(1 * (2 ** (attempt - 1)), 20)
+        attempt = 1
 
-        try:
-            _LOGGER.debug("[NET] Connecting via %s to %s:%s",
-                          self.proto.upper(), self.host, self.port)
+        for attempt in range(attempt, max_retries + 1):
+            backoff = min(1 * (2 ** (attempt - 1)), 20)
 
-            # ---------------------------------------------------------
-            # SSH CONNECTION
-            # ---------------------------------------------------------
-            if self.proto == "ssh":
+            try:
+                _LOGGER.debug("[NET] Connecting via %s to %s:%s",
+                            self.proto.upper(), self.host, self.port)
 
-                self._conn = await asyncssh.connect(
-                    self.host,
-                    username=self.username,
-                    password=self.password,
-                    port=self.port,
-                    known_hosts=self.known_hosts,
-                )
+                # ---------------------------------------------------------
+                # SSH CONNECTION
+                # ---------------------------------------------------------
+                if self.proto == "ssh":
 
-                # Factory creates NEW session instance and stores it
-                def factory():
-                    sess = TesiraClient._SSHSession(self)
-                    self._session = sess
-                    return sess
+                    self._conn = await asyncssh.connect(
+                        self.host,
+                        username=self.username,
+                        password=self.password,
+                        port=self.port,
+                        known_hosts=self.known_hosts,
+                    )
 
-                self._chan, _ = await self._conn.create_session(factory, term_type="vt100")
-                self._chan.write("\r\n")
+                    # Factory creates NEW session instance and stores it
+                    def factory():
+                        sess = TesiraClient._SSHSession(self)
+                        self._session = sess
+                        return sess
 
-            # ---------------------------------------------------------
-            # TELNET CONNECTION
-            # ---------------------------------------------------------
-            else:
-                self._reader, self._writer = await telnetlib3.open_connection(
-                    self.host,
-                    self.port,
-                    shell=None
-                )
+                    self._chan, _ = await self._conn.create_session(factory, term_type="vt100")
+                    self._chan.write("\r\n")
 
-                self._session = TesiraClient._TelnetSession(self)
-                self._conn = True  # sentinel indicating connected
+                # ---------------------------------------------------------
+                # TELNET CONNECTION
+                # ---------------------------------------------------------
+                else:
+                    self._reader, self._writer = await telnetlib3.open_connection(
+                        self.host,
+                        self.port,
+                        shell=None
+                    )
 
-                # Background reader
-                self._telnet_reader_future = asyncio.create_task(self._telnet_reader_task())
+                    self._session = TesiraClient._TelnetSession(self)
+                    self._conn = True  # sentinel indicating connected
 
-                self._writer.write("\r\n")
+                    # Background reader
+                    self._telnet_reader_future = asyncio.create_task(self._telnet_reader_task())
 
-            _LOGGER.debug("[NET] Connected")
+                    self._writer.write("\r\n")
 
-            # Start heartbeat once
-            if self._heartbeat_task is None:
-                self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+                _LOGGER.debug("[NET] Connected")
 
-            await self._resubscribe_all()
+                # Start heartbeat once
+                if self._heartbeat_task is None:
+                    self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
-        except Exception as e:
-            _LOGGER.error("[NET] Connect failed (%s), retrying in %s s", e, backoff)
-            await asyncio.sleep(backoff)
-            return await self.connect(attempt + 1)
+                await self._resubscribe_all()
+
+                break
+            except Exception as e:
+                _LOGGER.error("[NET] Connection attempt (%s) failed (%s), retrying in %s s", attempt, e, backoff)
+                if attempt == max_retries:
+                    _LOGGER.error(f"[NET] Connection failed after {max_retries} attempts: {e}")
+                    raise ConnectionError(f"Failed to connect after {max_retries} attempts: {e}")
+                await asyncio.sleep(backoff)
 
 
     # =====================================================================

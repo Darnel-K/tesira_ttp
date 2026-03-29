@@ -3,7 +3,7 @@
         "step": {
             "user": {
                 "title": "Connect your Tesira DSP",
-                "description": "Enter the Tesira DSP host and port for the Tesira Text Protocol server.",
+                "description": "Enter the Tesira DSP host, port, protocol & credentials for the Tesira Text Protocol server.",
                 "data": {
                     "host": "Host",
                     "port": "Port",
@@ -14,7 +14,7 @@
             },
             "reconfigure": {
                 "title": "Reconfigure Tesira DSP connection",
-                "description": "Enter the new Tesira DSP host and port for the Tesira Text Protocol server.",
+                "description": "Enter the Tesira DSP host, port, protocol & credentials for the Tesira Text Protocol server.",
                 "data": {
                     "host": "Host",
                     "port": "Port",
