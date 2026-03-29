@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, March 27th 2026, 12:16:37 AM                                                                  #
+# Last Modified: Saturday, March 28th 2026, 11:13:13 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -39,6 +39,8 @@ from .const import (
     CONF_IP,
     CONF_PORT,
     CONF_PROTO,
+    CONF_USER,
+    CONF_PASS,
     CONF_CONTROLS,
     CONF_CONTROL_NAME,
     CONF_INSTANCE_TAG,
@@ -48,6 +50,8 @@ from .const import (
     CONF_STEP_DB,
     DEFAULT_PORT,
     DEFAULT_PROTO,
+    DEFAULT_USER,
+    DEFAULT_PASS,
     DEFAULT_CONTROL_NAME,
     DEFAULT_CHANNEL,
     DEFAULT_MIN_DB,
@@ -70,7 +74,9 @@ STEP_USER_SCHEMA = vol.Schema(
                     {"value": "telnet", "label": "Telnet"}
                 ]
             }
-        })
+        }),
+        vol.Optional(CONF_USER, default=DEFAULT_USER): cv.string,
+        vol.Optional(CONF_PASS, default=DEFAULT_PASS): cv.string
     }
 )
 
@@ -97,6 +103,8 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host = user_input[CONF_IP]
             port = user_input[CONF_PORT]
             proto = user_input[CONF_PROTO]
+            user = user_input[CONF_USER]
+            pwrd = user_input[CONF_PASS]
 
             # Use host:port as unique key so a Tesira device is only configured once.
             await self.async_set_unique_id(f"{host}:{port}:{proto}")
@@ -104,7 +112,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Quick connectivity probe.
             try:
-                client = TesiraClient(host=host, port=port, proto=proto)
+                client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
                 await client.connect()
                 if client._conn is not None:
                     await client.disconnect()
@@ -118,8 +126,10 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.context["host"] = host
             self.context["port"] = port
             self.context["protocol"] = proto
+            self.context["username"] = user
+            self.context["password"] = pwrd
             title = f"Tesira {host}:{port}"
-            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port, CONF_PROTO: proto})
+            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port, CONF_PROTO: proto, CONF_USER: user, CONF_PASS: pwrd})
 
         return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
@@ -131,6 +141,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_IP: entry.data.get(CONF_IP),
             CONF_PORT: entry.data.get(CONF_PORT),
             CONF_PROTO: entry.data.get(CONF_PROTO),
+            CONF_USER: entry.data.get(CONF_USER)
         }
         schema = schema_with_defaults(STEP_USER_SCHEMA, defaults)
 
@@ -138,6 +149,8 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host = user_input[CONF_IP]
             port = user_input[CONF_PORT]
             proto = user_input[CONF_PROTO]
+            user = user_input[CONF_USER]
+            pwrd = user_input[CONF_PASS]
 
             new_unique_id = f"{host}:{port}:{proto}"
             for config_entry in self.hass.config_entries.async_entries(DOMAIN):
@@ -145,7 +158,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_abort(reason="already_configured")
 
             try:
-                client = TesiraClient(host=host, port=port, proto=proto)
+                client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
                 await client.connect()
                 if client._conn is not None:
                     await client.disconnect()
@@ -159,6 +172,8 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self.context["host"] = host
             self.context["port"] = port
             self.context["protocol"] = proto
+            self.context["username"] = user
+            self.context["password"] = pwrd
             return self.async_update_reload_and_abort(entry, data_updates=user_input)
 
         return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)

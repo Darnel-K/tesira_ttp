@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Thursday, March 26th 2026, 10:21:51 PM                                                                #
+# Last Modified: Saturday, March 28th 2026, 10:28:26 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -32,6 +32,8 @@ PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER]
 CONF_IP = "host"
 CONF_PORT = "port"
 CONF_PROTO = "protocol"
+CONF_USER = "username"
+CONF_PASS = "password"
 
 # Controls live in options as a list of dicts
 CONF_CONTROLS = "controls"
@@ -45,6 +47,8 @@ CONF_STEP_DB = "step_db"
 
 DEFAULT_PORT = 22
 DEFAULT_PROTO = "ssh"
+DEFAULT_USER = "default"
+DEFAULT_PASS = ""
 DEFAULT_CONTROL_NAME = "Tesira Volume"
 DEFAULT_CHANNEL = 1
 DEFAULT_MIN_DB = -100.0
