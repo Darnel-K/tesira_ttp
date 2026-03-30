@@ -37,7 +37,8 @@
             }
         },
         "error": {
-            "cannot_connect": "Cannot connect to the Tesira device."
+            "cannot_connect": "Cannot connect to the Tesira device.",
+            "invalid_credentials": "Invalid credentials for SSH connection. Please check your username and password."
         },
         "abort": {
             "already_configured": "This Tesira device is already configured."
