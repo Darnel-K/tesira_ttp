@@ -2,12 +2,25 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, March 22nd 2026, 12:45:03 AM                                                                  #
+# Last Modified: Monday, March 30th 2026, 5:16:29 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
-# This code complies with: https://gist.github.com/Darnel-K/8badda0cabdabb15359350f7af911c90                           #
+# License: GNU Affero General Public License v3.0 only - https://www.gnu.org/licenses/agpl.txt                         #
 # Copyright (c) 2026 Darnel Kumar                                                                                      #
+#                                                                                                                      #
+# This program is free software: you can redistribute it and/or modify                                                 #
+# it under the terms of the GNU Affero General Public License as published                                             #
+# by the Free Software Foundation, either version 3 of the License, or                                                 #
+# (at your option) any later version.                                                                                  #
+#                                                                                                                      #
+# This program is distributed in the hope that it will be useful,                                                      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                        #
+# GNU Affero General Public License for more details.                                                                  #
+#                                                                                                                      #
+# You should have received a copy of the GNU Affero General Public License                                             #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
 # #################################################################################################################### #
 from __future__ import annotations
 
@@ -17,7 +30,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.helpers.selector import selector
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
@@ -25,6 +38,9 @@ from .const import (
     DOMAIN,
     CONF_IP,
     CONF_PORT,
+    CONF_PROTO,
+    CONF_USER,
+    CONF_PASS,
     CONF_CONTROLS,
     CONF_CONTROL_NAME,
     CONF_INSTANCE_TAG,
@@ -33,13 +49,16 @@ from .const import (
     CONF_MAX_DB,
     CONF_STEP_DB,
     DEFAULT_PORT,
+    DEFAULT_PROTO,
+    DEFAULT_USER,
+    DEFAULT_PASS,
     DEFAULT_CONTROL_NAME,
     DEFAULT_CHANNEL,
     DEFAULT_MIN_DB,
     DEFAULT_MAX_DB,
     DEFAULT_STEP_DB
 )
-from .tesira_client import TesiraTtpClient
+from .tesira_client import TesiraClient
 from .util import schema_with_defaults
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,6 +67,16 @@ STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_IP): cv.string,
         vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
+        vol.Required(CONF_PROTO, default=DEFAULT_PROTO): selector({
+            "select": {
+                "options": [
+                    {"value": "ssh", "label": "SSH"},
+                    {"value": "telnet", "label": "Telnet"}
+                ]
+            }
+        }),
+        vol.Optional(CONF_USER, default=DEFAULT_USER): cv.string,
+        vol.Optional(CONF_PASS, default=DEFAULT_PASS): cv.string
     }
 )
 
@@ -71,27 +100,44 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            ip = user_input[CONF_IP]
+            host = user_input[CONF_IP]
             port = user_input[CONF_PORT]
+            proto = user_input[CONF_PROTO]
+            user = user_input[CONF_USER]
+            pwrd = user_input[CONF_PASS]
 
-            # Use ip:port as unique key so a Tesira device is only configured once.
-            await self.async_set_unique_id(f"{ip}:{port}")
+            # Use host:port as unique key so a Tesira device is only configured once.
+            await self.async_set_unique_id(f"{host}:{port}:{proto}")
             self._abort_if_unique_id_configured()
 
             # Quick connectivity probe.
             try:
-                client = TesiraTtpClient(ip, port)
+                client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
                 await client.connect()
-                await client.close()
+                if client._conn is not None:
+                    await client.disconnect()
+                else:
+                    raise ConnectionError("Failed to establish connection")
+            except TesiraClient.InvalidCredentials as e:
+                _LOGGER.debug("Connectivity test failed: %s", e)
+                errors["base"] = "invalid_credentials"
+                return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
+            except TesiraClient.AuthenticationUnsupportedError as e:
+                _LOGGER.debug("Connectivity test failed: %s", e)
+                errors["base"] = "unsupported_authentication"
+                return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
             except Exception as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
-            self.context["ip"] = ip
+            self.context["host"] = host
             self.context["port"] = port
-            title = f"Tesira {ip}:{port}"
-            return self.async_create_entry(title=title, data={CONF_IP: ip, CONF_PORT: port})
+            self.context["protocol"] = proto
+            self.context["username"] = user
+            self.context["password"] = pwrd
+            title = f"Tesira {host}:{port}"
+            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port, CONF_PROTO: proto, CONF_USER: user, CONF_PASS: pwrd})
 
         return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
@@ -102,28 +148,49 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         defaults = {
             CONF_IP: entry.data.get(CONF_IP),
             CONF_PORT: entry.data.get(CONF_PORT),
+            CONF_PROTO: entry.data.get(CONF_PROTO),
+            CONF_USER: entry.data.get(CONF_USER)
         }
         schema = schema_with_defaults(STEP_USER_SCHEMA, defaults)
 
         if user_input is not None:
-            ip = user_input[CONF_IP]
+            host = user_input[CONF_IP]
             port = user_input[CONF_PORT]
+            proto = user_input[CONF_PROTO]
+            user = user_input[CONF_USER]
+            pwrd = user_input[CONF_PASS]
 
-            await self.async_set_unique_id(f"{ip}:{port}")
-            self._abort_if_unique_id_configured()
+            new_unique_id = f"{host}:{port}:{proto}"
+            for config_entry in self.hass.config_entries.async_entries(DOMAIN):
+                if config_entry.unique_id == new_unique_id and config_entry.entry_id != entry.entry_id:
+                    return self.async_abort(reason="already_configured")
 
             try:
-                client = TesiraTtpClient(ip, port)
+                client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
                 await client.connect()
-                await client.close()
+                if client._conn is not None:
+                    await client.disconnect()
+                else:
+                    raise ConnectionError("Failed to establish connection")
+            except TesiraClient.InvalidCredentials as e:
+                _LOGGER.debug("Connectivity test failed: %s", e)
+                errors["base"] = "invalid_credentials"
+                return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+            except TesiraClient.AuthenticationUnsupportedError as e:
+                _LOGGER.debug("Connectivity test failed: %s", e)
+                errors["base"] = "unsupported_authentication"
+                return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
             except Exception as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 
-            self.context["ip"] = ip
+            self.context["host"] = host
             self.context["port"] = port
-            return self.async_update_reload_and_abort(self._get_reconfigure_entry(), data_updates=user_input)
+            self.context["protocol"] = proto
+            self.context["username"] = user
+            self.context["password"] = pwrd
+            return self.async_update_reload_and_abort(entry, data_updates=user_input)
 
         return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 

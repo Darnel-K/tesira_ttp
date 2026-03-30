@@ -1,3 +1,27 @@
+# #################################################################################################################### #
+# Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
+# Repository: tesira_ttp                                                                                               #
+# Created Date: Sunday, March 22nd 2026, 10:04:37 PM                                                                   #
+# Last Modified: Saturday, March 28th 2026, 10:39:51 PM                                                                #
+# Original Author: Darnel Kumar                                                                                        #
+# Author Github: https://github.com/Darnel-K                                                                           #
+#                                                                                                                      #
+# License: GNU Affero General Public License v3.0 only - https://www.gnu.org/licenses/agpl.txt                         #
+# Copyright (c) 2026 Darnel Kumar                                                                                      #
+#                                                                                                                      #
+# This program is free software: you can redistribute it and/or modify                                                 #
+# it under the terms of the GNU Affero General Public License as published                                             #
+# by the Free Software Foundation, either version 3 of the License, or                                                 #
+# (at your option) any later version.                                                                                  #
+#                                                                                                                      #
+# This program is distributed in the hope that it will be useful,                                                      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                        #
+# GNU Affero General Public License for more details.                                                                  #
+#                                                                                                                      #
+# You should have received a copy of the GNU Affero General Public License                                             #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
+# #################################################################################################################### #
 from __future__ import annotations
 
 import logging
@@ -6,7 +30,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT
+from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT, CONF_PROTO, CONF_USER, CONF_PASS
 from .hub import TesiraHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,14 +50,17 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    ip = entry.data[CONF_IP]
+    host = entry.data[CONF_IP]
     port = entry.data[CONF_PORT]
+    proto = entry.data[CONF_PROTO]
+    user = entry.data.get(CONF_USER)
+    pwrd = entry.data.get(CONF_PASS)
 
     hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
-    hubkey = f"{ip}:{port}"
+    hubkey = f"{host}:{port}:{proto}"
     hub = hubs.get(hubkey)
     if hub is None:
-        hub = TesiraHub(ip, port)
+        hub = TesiraHub(host=host, port=port, proto=proto, username=user, password=pwrd, safe_mode=True)
         hubs[hubkey] = hub
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 
@@ -54,7 +81,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if hubkey not in hass.data[DOMAIN][DATA_ENTRY_HUBKEY].values():
             hub = hubs.pop(hubkey, None)
             if hub:
-                await hub.close()
+                await hub.disconnect()
                 _LOGGER.debug("Closed Tesira hub for %s", hubkey)
 
     return unload_ok
