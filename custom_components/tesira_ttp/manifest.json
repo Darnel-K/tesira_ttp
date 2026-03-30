@@ -1,6 +1,6 @@
 {
     "domain": "tesira_ttp",
-    "name": "Tesira TTP Control (Telnet)",
+    "name": "Tesira Text Protocol (SSH & Telnet)",
     "codeowners": [
         "@Darnel-K"
     ],
@@ -15,7 +15,8 @@
     ],
     "requirements": [
         "telnetlib3>=4.0.1",
-        "asyncssh>=2.22.0"
+        "asyncssh>=2.22.0",
+        "prompt_toolkit>=3.0.52"
     ],
-    "version": "0.3.0"
+    "version": "0.8.0"
 }

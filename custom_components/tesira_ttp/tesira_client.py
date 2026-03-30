@@ -2,12 +2,25 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, March 22nd 2026, 7:06:25 PM                                                                   #
+# Last Modified: Monday, March 30th 2026, 3:26:17 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
-# This code complies with: https://gist.github.com/Darnel-K/8badda0cabdabb15359350f7af911c90                           #
+# License: GNU Affero General Public License v3.0 only - https://www.gnu.org/licenses/agpl.txt                         #
 # Copyright (c) 2026 Darnel Kumar                                                                                      #
+#                                                                                                                      #
+# This program is free software: you can redistribute it and/or modify                                                 #
+# it under the terms of the GNU Affero General Public License as published                                             #
+# by the Free Software Foundation, either version 3 of the License, or                                                 #
+# (at your option) any later version.                                                                                  #
+#                                                                                                                      #
+# This program is distributed in the hope that it will be useful,                                                      #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of                                                       #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                                                        #
+# GNU Affero General Public License for more details.                                                                  #
+#                                                                                                                      #
+# You should have received a copy of the GNU Affero General Public License                                             #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
 # #################################################################################################################### #
 from __future__ import annotations
 
@@ -19,61 +32,9 @@ import random
 import re
 import time
 import logging
-
-# For backward compatibility, this module still contains the old TesiraTtpClient class,
-# but it is now a wrapper around the new TesiraClient which supports both SSH and Telnet. The new TesiraClient is more robust and feature-rich, while TesiraTtpClient preserves the old API for existing code. New code should use TesiraClient directly for better performance and reliability.
-from typing import Optional
+import inspect
 
 _LOGGER = logging.getLogger(__name__)
-
-# =====================================================================
-# Legacy Parser Helper Functions (module-level for imports)
-# =====================================================================
-def parse_first_float(text: str) -> Optional[float]:
-    m = re.search(r'"value"\s*:\s*(-?\d+(?:\.\d+)?)', text)
-    if m:
-        try:
-            return float(m.group(1))
-        except Exception:
-            pass
-
-    m = re.search(r'(-?\d+(?:\.\d+)?)', text)
-    if m:
-        try:
-            return float(m.group(1))
-        except Exception:
-            pass
-
-    return None
-
-
-def parse_bool(text: str) -> Optional[bool]:
-    s = text.lower()
-    if "true" in s:
-        return True
-    if "false" in s:
-        return False
-    if re.search(r'\b1\b', s):
-        return True
-    if re.search(r'\b0\b', s):
-        return False
-    return None
-
-# =====================================================================
-# Exceptions
-# =====================================================================
-class TesiraError(Exception):
-    """Represents a Tesira TTP -ERR response."""
-    def __init__(self, message, raw=None, cmd=None):
-        super().__init__(message)
-        self.message = message
-        self.raw = raw
-        self.cmd = cmd
-
-
-class TesiraConnectionError(Exception):
-    pass
-
 
 # =====================================================================
 # Tesira Client (SSH + TELNET)
@@ -95,18 +56,18 @@ class TesiraClient:
         heartbeat_failure_threshold: int = 3,
         heartbeat_jitter: float = 1.5,
 
-        safe_mode=False,
+        safe_mode=False
     ):
         # -----------------------------------------------------------------
         # Protocol validation
         # -----------------------------------------------------------------
         proto = proto.lower().strip()
         if proto not in self.ALLOWED_PROTOCOLS:
-            raise ValueError(f"Unsupported protocol '{proto}'. Allowed: {self.ALLOWED_PROTOCOLS}")
+            raise self.ProtocolError(f"Unsupported protocol '{proto}'. Allowed: {self.ALLOWED_PROTOCOLS}")
 
         if proto == "telnet":
             if username != "default" or (password not in ("", None)):
-                raise ValueError("Telnet only supports user='default' with blank password.")
+                raise self.AuthenticationUnsupportedError("Telnet only supports user='default' with blank password.")
             if port is None:
                 port = 23
 
@@ -227,68 +188,77 @@ class TesiraClient:
     # =====================================================================
     # CONNECT (SSH + TELNET)
     # =====================================================================
-    async def connect(self, attempt=1):
+    async def connect(self, max_retries=5):
         if self._conn:
             return
 
-        backoff = min(1 * (2 ** (attempt - 1)), 20)
+        attempt = 1
 
-        try:
-            _LOGGER.debug("[NET] Connecting via %s to %s:%s",
-                          self.proto.upper(), self.host, self.port)
+        for attempt in range(attempt, max_retries + 1):
+            backoff = min(1 * (2 ** (attempt - 1)), 20)
 
-            # ---------------------------------------------------------
-            # SSH CONNECTION
-            # ---------------------------------------------------------
-            if self.proto == "ssh":
+            try:
+                _LOGGER.debug("[NET] Connecting via %s to %s:%s",
+                            self.proto.upper(), self.host, self.port)
 
-                self._conn = await asyncssh.connect(
-                    self.host,
-                    username=self.username,
-                    password=self.password,
-                    port=self.port,
-                    known_hosts=self.known_hosts,
-                )
+                # ---------------------------------------------------------
+                # SSH CONNECTION
+                # ---------------------------------------------------------
+                if self.proto == "ssh":
 
-                # Factory creates NEW session instance and stores it
-                def factory():
-                    sess = TesiraClient._SSHSession(self)
-                    self._session = sess
-                    return sess
+                    self._conn = await asyncssh.connect(
+                        self.host,
+                        username=self.username,
+                        password=self.password,
+                        port=self.port,
+                        known_hosts=self.known_hosts,
+                    )
 
-                self._chan, _ = await self._conn.create_session(factory, term_type="vt100")
-                self._chan.write("\r\n")
+                    # Factory creates NEW session instance and stores it
+                    def factory():
+                        sess = TesiraClient._SSHSession(self)
+                        self._session = sess
+                        return sess
 
-            # ---------------------------------------------------------
-            # TELNET CONNECTION
-            # ---------------------------------------------------------
-            else:
-                self._reader, self._writer = await telnetlib3.open_connection(
-                    self.host,
-                    self.port,
-                    shell=None
-                )
+                    self._chan, _ = await self._conn.create_session(factory, term_type="vt100")
+                    self._chan.write("\r\n")
 
-                self._session = TesiraClient._TelnetSession(self)
-                self._conn = True  # sentinel indicating connected
+                # ---------------------------------------------------------
+                # TELNET CONNECTION
+                # ---------------------------------------------------------
+                else:
+                    self._reader, self._writer = await telnetlib3.open_connection(
+                        self.host,
+                        self.port,
+                        shell=None
+                    )
 
-                # Background reader
-                self._telnet_reader_future = asyncio.create_task(self._telnet_reader_task())
+                    self._session = TesiraClient._TelnetSession(self)
+                    self._conn = True  # sentinel indicating connected
 
-                self._writer.write("\r\n")
+                    # Background reader
+                    self._telnet_reader_future = asyncio.create_task(self._telnet_reader_task())
 
-            _LOGGER.debug("[NET] Connected")
+                    self._writer.write("\r\n")
 
-            # Start heartbeat once
-            if self._heartbeat_task is None:
-                self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+                _LOGGER.debug("[NET] Connected")
 
-            await self._resubscribe_all()
+                # Start heartbeat once
+                if self._heartbeat_task is None:
+                    self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
-        except Exception as e:
-            _LOGGER.error("[NET] Connect failed (%s), retrying in %s s", e, backoff)
-            await asyncio.sleep(backoff)
-            return await self.connect(attempt + 1)
+                await self._resubscribe_all()
+
+                break
+            except asyncssh.PermissionDenied as e:
+                _LOGGER.error("[NET] Invalid credentials: %s", e)
+                raise self.InvalidCredentials(f"Invalid credentials: {e}")
+            except Exception as e:
+                _LOGGER.error("[NET] Connection attempt (%s) failed (%s), retrying in %s s", attempt, e, backoff)
+                if attempt == max_retries:
+                    _LOGGER.error(f"[NET] Maximum connection attempts reached: {e}")
+                    raise ConnectionError(f"Maximum connection attempts reached: {e}")
+                await asyncio.sleep(backoff)
 
 
     # =====================================================================
@@ -348,7 +318,7 @@ class TesiraClient:
             try:
                 await asyncio.wait_for(self._session.complete.wait(), timeout)
             except asyncio.TimeoutError:
-                raise TesiraError("Timeout waiting for +OK or -ERR", raw=self._session.buffer, cmd=cmd)
+                raise self.TimeoutError("Timeout waiting for +OK or -ERR", raw=self._session.buffer, cmd=cmd)
 
             raw = self._session.buffer.strip()
             lines = [l.strip() for l in raw.splitlines()]
@@ -356,12 +326,12 @@ class TesiraClient:
             final = next((l for l in lines if l.startswith("+OK") or l.startswith("-ERR")), None)
 
             if not final:
-                raise TesiraError("No +OK/-ERR returned", raw=raw, cmd=cmd)
+                raise self.CommandError("No +OK/-ERR returned", raw=raw, cmd=cmd)
 
             if final.startswith("-ERR"):
                 if self.safe_mode:
                     return {"error": final, "raw": raw}
-                raise TesiraError(final, raw=raw, cmd=cmd)
+                raise self.CommandError(final, raw=raw, cmd=cmd)
 
             return final
 
@@ -393,7 +363,7 @@ class TesiraClient:
         try:
             return json.loads(payload)
         except Exception as e:
-            raise TesiraError(f"JSON parsing failed: {e}", raw=payload, cmd=cmd)
+            raise self.JSONParseError(f"JSON parsing failed: {e}", raw=payload, cmd=cmd)
 
 
     # =====================================================================
@@ -438,7 +408,7 @@ class TesiraClient:
     async def unsubscribe(self, token: str):
         try:
             await self.command(f"unsubscribe {token}")
-        except TesiraError:
+        except self.CommandError:
             await self.command(f"UNSUBSCRIBE {token}")
 
         self._subscriptions.pop(token, None)
@@ -474,17 +444,26 @@ class TesiraClient:
         if not token:
             return
 
+        # Subscription callback
         sub = self._subscriptions.get(token)
         if sub:
             cb = sub["callback"]
             try:
-                cb(data)
+                if inspect.iscoroutinefunction(cb):
+                    asyncio.create_task(cb(data))
+                else:
+                    cb(data)
             except Exception as e:
                 _LOGGER.error("[EVENT ERROR] %s", e)
 
+        # Global event callback
         if self._event_callback:
+            cb = self._event_callback
             try:
-                self._event_callback(data)
+                if inspect.iscoroutinefunction(cb):
+                    asyncio.create_task(cb(data))
+                else:
+                    cb(data)
             except Exception as e:
                 _LOGGER.error("[EVENT ERROR global] %s", e)
 
@@ -519,154 +498,36 @@ class TesiraClient:
     async def queue(self, cmd: str):
         return await self.command(cmd)
 
+    # =====================================================================
+    # Exceptions
+    # =====================================================================
+    class CommandError(Exception):
+        """Represents a Tesira TTP -ERR response."""
+        def __init__(self, message, raw=None, cmd=None):
+            super().__init__(message)
+            self.message = message
+            self.raw = raw
+            self.cmd = cmd
 
-_OK_RE = re.compile(r"\+OK", re.IGNORECASE)
-_ERR_RE = re.compile(r"-ERR", re.IGNORECASE)
+    class InvalidCredentials(Exception):
+        pass
 
-class TesiraTtpClient:
-    """
-    Full backwards‑compatible wrapper for the old TesiraTtpClient API.
-    Internally uses the new TesiraClient, but preserves:
-        - raw output rules
-        - CRLF behavior
-        - timeout behavior
-        - connect()
-        - close()
-        - send_and_wait()
-        - parse helpers
-    """
+    class ProtocolError(Exception):
+        pass
 
-    def __init__(self, ip: str, port: int = 23, proto: str = "telnet",
-                 user: str = "default", password: str = None):
+    class JSONParseError(Exception):
+        def __init__(self, message, raw=None, cmd=None):
+            super().__init__(message)
+            self.message = message
+            self.raw = raw
+            self.cmd = cmd
 
-        from .tesira_client import TesiraClient
+    class AuthenticationUnsupportedError(Exception):
+        pass
 
-        proto = proto.strip().lower()
-        if proto == "telnet":
-            _LOGGER.warning(
-                "Using Telnet protocol is not recommended. For more information, see https://support.biamp.com/Tesira/Control/Tesira_security_best_practices"
-            )
-            if user != "default" or password not in (None, ""):
-                raise NotImplementedError(
-                    "Telnet only supports user='default' + blank password."
-                )
-        elif proto != "ssh":
-            raise ValueError(f"Unsupported proto={proto!r}")
-
-        # Use new TesiraClient internally
-        self._client = TesiraClient(
-            host=ip,
-            username=user,
-            password=password or "",
-            port=port,
-            proto=proto,
-        )
-
-        self._lock = asyncio.Lock()
-        self._proto = proto
-        self._ip = ip
-        self._port = port
-
-    # ----------------------------------------------------------------------
-    @property
-    def is_connected(self) -> bool:
-        # old behavior: true if connection exists and not closing
-        return self._client._conn is not None
-
-    # ----------------------------------------------------------------------
-    async def connect(self) -> None:
-        """Old behavior: connect and drain banner."""
-        await self._client.connect()
-
-        # OLD CLIENT drained banner for 1 second.
-        # We emulate that for backwards compatibility.
-        await self._drain_for(1.0)
-
-        # OLD CLIENT nudged prompt readiness with CRLF
-        await self._send_raw("\r\n")
-        await asyncio.sleep(0.3)  # old timing
-
-    # ----------------------------------------------------------------------
-    async def close(self) -> None:
-        await self._client.disconnect()
-
-    # ----------------------------------------------------------------------
-    async def _send_raw(self, text: str) -> None:
-        """Send raw text to Tesira using underlying protocol."""
-        if self._proto == "ssh":
-            self._client._chan.write(text)
-        else:
-            self._client._writer.write(text)
-
-    # ----------------------------------------------------------------------
-    async def _read_raw(self, max_bytes=1024) -> str:
-        """
-        Read raw data FROM THE SESSION BUFFER instead of the TelnetReader.
-        This avoids telnetlib3 read conflicts.
-        """
-        if self._proto == "ssh":
-            # SSH safe to read directly:
-            try:
-                return await asyncio.wait_for(self._client._chan.read(max_bytes), timeout=0.2)
-            except:
-                return ""
-
-        # TELNET SAFE PATH:
-        # Pull from buffered data gathered by _telnet_reader_task
-        await asyncio.sleep(0.05)  # allow buffer to fill
-        buf = self._client._session.buffer
-        self._client._session.buffer = ""  # consume it
-        return buf
-
-
-    # ----------------------------------------------------------------------
-    async def _drain_for(self, seconds: float) -> str:
-        """Old behavior: read whatever arrives for N seconds."""
-        end = asyncio.get_running_loop().time() + seconds
-        buf = []
-        while asyncio.get_running_loop().time() < end:
-            chunk = await self._read_raw()
-            if chunk:
-                buf.append(chunk)
-        return "".join(buf)
-
-    # ----------------------------------------------------------------------
-    async def send_and_wait(self, line: str, timeout: float = 1.0) -> str:
-        """
-        EXACT old behavior:
-          - sends raw line
-          - reads raw text until +OK or -ERR
-          - returns the FULL raw blob, not the cleaned line.
-        """
-        async with self._lock:
-            await self.connect()
-
-            # normalize CRLF
-            line = line.rstrip("\r\n")
-            payload = line + "\r\n"
-
-            await self._send_raw(payload)
-
-            acc = ""
-            end = asyncio.get_running_loop().time() + timeout
-
-            while asyncio.get_running_loop().time() < end:
-                chunk = await self._read_raw()
-                if not chunk:
-                    continue
-                acc += chunk
-                if _OK_RE.search(acc) or _ERR_RE.search(acc):
-                    break
-
-            return acc  # return EXACT raw output
-
-    # ----------------------------------------------------------------------
-    # Parsing helpers EXACTLY as before
-    # ----------------------------------------------------------------------
-    @staticmethod
-    def parse_first_float(text: str) -> Optional[float]:
-        return parse_first_float(text)
-
-    @staticmethod
-    def parse_bool(text: str) -> Optional[bool]:
-        return parse_bool(text)
+    class TimeoutError(Exception):
+        def __init__(self, message, raw=None, cmd=None):
+            super().__init__(message)
+            self.message = message
+            self.raw = raw
+            self.cmd = cmd

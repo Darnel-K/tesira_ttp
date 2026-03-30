@@ -1,20 +1,28 @@
 {
+    "title": "Tesira Text Protocol (SSH & Telnet)",
+    "common": {},
     "config": {
         "step": {
             "user": {
                 "title": "Connect your Tesira DSP",
-                "description": "Enter the Tesira DSP IP address and port for the TTP Telnet server.",
+                "description": "Enter the Tesira DSP host, port, protocol & credentials for the Tesira Text Protocol server.",
                 "data": {
-                    "ip": "IP Address",
-                    "port": "Port"
+                    "host": "Host",
+                    "port": "Port",
+                    "protocol": "Protocol",
+                    "username": "Username (SSH only)",
+                    "password": "Password (SSH only)"
                 }
             },
             "reconfigure": {
                 "title": "Reconfigure Tesira DSP connection",
-                "description": "Enter the new Tesira DSP IP address and port for the TTP Telnet server.",
+                "description": "Enter the Tesira DSP host, port, protocol & credentials for the Tesira Text Protocol server.",
                 "data": {
-                    "ip": "IP Address",
-                    "port": "Port"
+                    "host": "Host",
+                    "port": "Port",
+                    "protocol": "Protocol",
+                    "username": "Username (SSH only)",
+                    "password": "Password (SSH only)"
                 }
             },
             "control": {
@@ -31,10 +39,13 @@
             }
         },
         "error": {
-            "cannot_connect": "Cannot connect to the Tesira device."
+            "cannot_connect": "Cannot connect to the Tesira device.",
+            "invalid_credentials": "Invalid credentials for SSH connection. Please check your username and password.",
+            "unsupported_authentication": "Authentication is not supported when using Telnet. Please switch to SSH or leave username as default and password blank."
         },
         "abort": {
-            "already_configured": "This Tesira device is already configured."
+            "already_configured": "This Tesira device is already configured.",
+            "reconfigure_successful": "Tesira DSP connection reconfigured successfully."
         }
     },
     "options": {
