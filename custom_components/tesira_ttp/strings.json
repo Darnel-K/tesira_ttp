@@ -1,4 +1,6 @@
 {
+    "title": "Tesira Text Protocol (SSH & Telnet)",
+    "common": {},
     "config": {
         "step": {
             "user": {
@@ -37,10 +39,13 @@
             }
         },
         "error": {
-            "cannot_connect": "Cannot connect to the Tesira device."
+            "cannot_connect": "Cannot connect to the Tesira device.",
+            "invalid_credentials": "Invalid credentials for SSH connection. Please check your username and password.",
+            "unsupported_authentication": "Authentication is not supported when using Telnet. Please switch to SSH or leave username as default and password blank."
         },
         "abort": {
-            "already_configured": "This Tesira device is already configured."
+            "already_configured": "This Tesira device is already configured.",
+            "reconfigure_successful": "Tesira DSP connection reconfigured successfully."
         }
     },
     "options": {
