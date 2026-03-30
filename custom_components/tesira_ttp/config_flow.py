@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Monday, March 30th 2026, 2:33:41 PM                                                                   #
+# Last Modified: Monday, March 30th 2026, 2:43:57 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -118,7 +118,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     await client.disconnect()
                 else:
                     raise ConnectionError("Failed to establish connection")
-            except TesiraClient.TesiraSSHPermissionError as e:
+            except TesiraClient.InvalidCredentials as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "invalid_credentials"
                 return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
@@ -168,7 +168,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     await client.disconnect()
                 else:
                     raise ConnectionError("Failed to establish connection")
-            except TesiraClient.TesiraSSHPermissionError as e:
+            except TesiraClient.InvalidCredentials as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "invalid_credentials"
                 return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)

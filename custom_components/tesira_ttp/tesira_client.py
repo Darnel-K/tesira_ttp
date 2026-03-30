@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Monday, March 30th 2026, 1:41:50 PM                                                                   #
+# Last Modified: Monday, March 30th 2026, 3:26:17 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -63,11 +63,11 @@ class TesiraClient:
         # -----------------------------------------------------------------
         proto = proto.lower().strip()
         if proto not in self.ALLOWED_PROTOCOLS:
-            raise ValueError(f"Unsupported protocol '{proto}'. Allowed: {self.ALLOWED_PROTOCOLS}")
+            raise self.ProtocolError(f"Unsupported protocol '{proto}'. Allowed: {self.ALLOWED_PROTOCOLS}")
 
         if proto == "telnet":
             if username != "default" or (password not in ("", None)):
-                raise ValueError("Telnet only supports user='default' with blank password.")
+                raise self.AuthenticationUnsupportedError("Telnet only supports user='default' with blank password.")
             if port is None:
                 port = 23
 
@@ -252,12 +252,12 @@ class TesiraClient:
                 break
             except asyncssh.PermissionDenied as e:
                 _LOGGER.error("[NET] Invalid credentials: %s", e)
-                raise self.TesiraSSHPermissionError(f"Invalid credentials: {e}")
+                raise self.InvalidCredentials(f"Invalid credentials: {e}")
             except Exception as e:
                 _LOGGER.error("[NET] Connection attempt (%s) failed (%s), retrying in %s s", attempt, e, backoff)
                 if attempt == max_retries:
                     _LOGGER.error(f"[NET] Maximum connection attempts reached: {e}")
-                    raise self.TesiraConnectionError(f"Maximum connection attempts reached: {e}")
+                    raise ConnectionError(f"Maximum connection attempts reached: {e}")
                 await asyncio.sleep(backoff)
 
 
@@ -318,7 +318,7 @@ class TesiraClient:
             try:
                 await asyncio.wait_for(self._session.complete.wait(), timeout)
             except asyncio.TimeoutError:
-                raise self.TesiraError("Timeout waiting for +OK or -ERR", raw=self._session.buffer, cmd=cmd)
+                raise self.TimeoutError("Timeout waiting for +OK or -ERR", raw=self._session.buffer, cmd=cmd)
 
             raw = self._session.buffer.strip()
             lines = [l.strip() for l in raw.splitlines()]
@@ -326,12 +326,12 @@ class TesiraClient:
             final = next((l for l in lines if l.startswith("+OK") or l.startswith("-ERR")), None)
 
             if not final:
-                raise self.TesiraError("No +OK/-ERR returned", raw=raw, cmd=cmd)
+                raise self.CommandError("No +OK/-ERR returned", raw=raw, cmd=cmd)
 
             if final.startswith("-ERR"):
                 if self.safe_mode:
                     return {"error": final, "raw": raw}
-                raise self.TesiraError(final, raw=raw, cmd=cmd)
+                raise self.CommandError(final, raw=raw, cmd=cmd)
 
             return final
 
@@ -363,7 +363,7 @@ class TesiraClient:
         try:
             return json.loads(payload)
         except Exception as e:
-            raise self.TesiraError(f"JSON parsing failed: {e}", raw=payload, cmd=cmd)
+            raise self.JSONParseError(f"JSON parsing failed: {e}", raw=payload, cmd=cmd)
 
 
     # =====================================================================
@@ -408,7 +408,7 @@ class TesiraClient:
     async def unsubscribe(self, token: str):
         try:
             await self.command(f"unsubscribe {token}")
-        except self.TesiraError:
+        except self.CommandError:
             await self.command(f"UNSUBSCRIBE {token}")
 
         self._subscriptions.pop(token, None)
@@ -501,7 +501,7 @@ class TesiraClient:
     # =====================================================================
     # Exceptions
     # =====================================================================
-    class TesiraError(Exception):
+    class CommandError(Exception):
         """Represents a Tesira TTP -ERR response."""
         def __init__(self, message, raw=None, cmd=None):
             super().__init__(message)
@@ -509,8 +509,25 @@ class TesiraClient:
             self.raw = raw
             self.cmd = cmd
 
-    class TesiraConnectionError(Exception):
+    class InvalidCredentials(Exception):
         pass
 
-    class TesiraSSHPermissionError(Exception):
+    class ProtocolError(Exception):
         pass
+
+    class JSONParseError(Exception):
+        def __init__(self, message, raw=None, cmd=None):
+            super().__init__(message)
+            self.message = message
+            self.raw = raw
+            self.cmd = cmd
+
+    class AuthenticationUnsupportedError(Exception):
+        pass
+
+    class TimeoutError(Exception):
+        def __init__(self, message, raw=None, cmd=None):
+            super().__init__(message)
+            self.message = message
+            self.raw = raw
+            self.cmd = cmd
