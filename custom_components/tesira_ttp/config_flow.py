@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Monday, March 30th 2026, 5:16:29 PM                                                                   #
+# Last Modified: Friday, April 3rd 2026, 9:27:12 PM                                                                    #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -41,6 +41,7 @@ from .const import (
     CONF_PROTO,
     CONF_USER,
     CONF_PASS,
+    CONF_DEVICE_INFO,
     CONF_CONTROLS,
     CONF_CONTROL_NAME,
     CONF_INSTANCE_TAG,
@@ -59,7 +60,7 @@ from .const import (
     DEFAULT_STEP_DB
 )
 from .tesira_client import TesiraClient
-from .util import schema_with_defaults
+from .util import schema_with_defaults, gen_hub_key, TesiraTTPException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,16 +107,25 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user = user_input[CONF_USER]
             pwrd = user_input[CONF_PASS]
 
-            # Use host:port as unique key so a Tesira device is only configured once.
-            await self.async_set_unique_id(f"{host}:{port}:{proto}")
-            self._abort_if_unique_id_configured()
-
             # Quick connectivity probe.
             try:
                 client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
                 await client.connect()
                 if client._conn is not None:
-                    await client.disconnect()
+                    try:
+                        device_info = await client.device_info()
+                        await client.disconnect()
+                        device_info = device_info["info"]
+                        _LOGGER.debug("Connectivity test successful: %s", device_info["serialNumber"])
+                        hub_key = gen_hub_key(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
+                        # Use device_info as unique key so a Tesira device is only configured once.
+                        await self.async_set_unique_id(hub_key)
+                        self._abort_if_unique_id_configured()
+                    except Exception as e:
+                        _LOGGER.debug("Connectivity test succeeded but failed to get device info: %s", e)
+                        errors["base"] = "device_info_failed"
+                        await client.disconnect()
+                        return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
                 else:
                     raise ConnectionError("Failed to establish connection")
             except TesiraClient.InvalidCredentials as e:
@@ -131,13 +141,8 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
-            self.context["host"] = host
-            self.context["port"] = port
-            self.context["protocol"] = proto
-            self.context["username"] = user
-            self.context["password"] = pwrd
-            title = f"Tesira {host}:{port}"
-            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port, CONF_PROTO: proto, CONF_USER: user, CONF_PASS: pwrd})
+            title = f"Biamp - {device_info['deviceModel']} - {device_info['serialNumber']} - {host}:{port}"
+            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port, CONF_PROTO: proto, CONF_USER: user, CONF_PASS: pwrd, CONF_DEVICE_INFO: device_info})
 
         return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
 
@@ -152,6 +157,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_USER: entry.data.get(CONF_USER)
         }
         schema = schema_with_defaults(STEP_USER_SCHEMA, defaults)
+        existing_device_info = entry.data.get(CONF_DEVICE_INFO)
 
         if user_input is not None:
             host = user_input[CONF_IP]
@@ -160,16 +166,29 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             user = user_input[CONF_USER]
             pwrd = user_input[CONF_PASS]
 
-            new_unique_id = f"{host}:{port}:{proto}"
-            for config_entry in self.hass.config_entries.async_entries(DOMAIN):
-                if config_entry.unique_id == new_unique_id and config_entry.entry_id != entry.entry_id:
-                    return self.async_abort(reason="already_configured")
-
             try:
                 client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
                 await client.connect()
                 if client._conn is not None:
-                    await client.disconnect()
+                    try:
+                        device_info = await client.device_info()
+                        await client.disconnect()
+                        device_info = device_info["info"]
+                        _LOGGER.debug("Connectivity test successful: %s", device_info["serialNumber"])
+                        if existing_device_info:
+                            if device_info["serialNumber"] != existing_device_info.get("serialNumber") or device_info["deviceModel"] != existing_device_info.get("deviceModel") or device_info["deviceRevision"] != existing_device_info.get("deviceRevision"):
+                                _LOGGER.warning("Device info has changed from %s to %s. This may indicate that the connection parameters now point to a different Tesira device.", existing_device_info, device_info)
+                                raise TesiraTTPException.NotPermitted("Device info has changed. This may indicate that the connection parameters now point to a different Tesira device.")
+                    except TesiraTTPException.NotPermitted as e:
+                        _LOGGER.debug("Connectivity test succeeded but device info has changed: %s", e)
+                        errors["base"] = "different_device"
+                        await client.disconnect()
+                        return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+                    except Exception as e:
+                        _LOGGER.debug("Connectivity test succeeded but failed to get device info: %s", e)
+                        errors["base"] = "device_info_failed"
+                        await client.disconnect()
+                        return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
                 else:
                     raise ConnectionError("Failed to establish connection")
             except TesiraClient.InvalidCredentials as e:
@@ -185,11 +204,6 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
 
-            self.context["host"] = host
-            self.context["port"] = port
-            self.context["protocol"] = proto
-            self.context["username"] = user
-            self.context["password"] = pwrd
             return self.async_update_reload_and_abort(entry, data_updates=user_input)
 
         return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)

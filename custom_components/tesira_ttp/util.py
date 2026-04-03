@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Sunday, March 22nd 2026, 10:04:37 PM                                                                   #
-# Last Modified: Thursday, March 26th 2026, 12:25:23 AM                                                                #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Friday, April 3rd 2026, 9:21:44 PM                                                                    #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -29,6 +29,8 @@ from __future__ import annotations
 from typing import Any, Dict
 
 import voluptuous as vol
+import base64
+import json
 
 # =====================================================================
 # Schema Helpers
@@ -68,3 +70,65 @@ def schema_with_defaults(
             new_fields[key] = validator
 
     return vol.Schema(new_fields)
+
+def gen_hub_key(deviceModel: str, deviceRevision: int, serialNumber: str, format: str = "b64") -> str:
+    """
+    Generate a unique key for a Tesira hub based on connection parameters.
+
+    Args:
+
+        deviceModel: The model of the device.
+        deviceRevision: The revision of the device.
+        serialNumber: The serial number of the device.
+        format: The output format of the key ("b64" for base64, "plain" for raw string, "json" for JSON).
+
+    Returns:
+        A unique string key representing the hub configuration.
+    """
+    ALLOWED_FORMATS = {"b64", "plain", "json"}
+    hub_key = {"deviceModel": deviceModel.lower(), "deviceRevision": deviceRevision.lower(), "serialNumber": serialNumber.lower()}
+    format = format.lower().strip()
+    if format not in ALLOWED_FORMATS:
+            raise ValueError(f"Unsupported format '{format}'. Allowed: {ALLOWED_FORMATS}")
+
+    match format:
+        case "json":
+             return json.dumps(hub_key, sort_keys=True)
+        case "plain":
+             return f"{hub_key['deviceModel']}:{hub_key['deviceRevision']}:{hub_key['serialNumber']}"
+        case "b64":
+             return base64.urlsafe_b64encode(json.dumps(hub_key, sort_keys=True).encode()).decode()
+
+def parse_hub_key(hub_key: str, format: str = "b64") -> Dict[str, str]:
+    """
+    Parse a hub key back into its components.
+
+    Args:
+        hub_key: The unique key representing the hub configuration.
+        format: The format of the input key ("b64" for base64, "plain" for raw string, "json" for JSON).
+
+    Returns:
+        A dictionary containing the original parameters (deviceModel, deviceRevision, serialNumber).
+    """
+    ALLOWED_FORMATS = {"b64", "plain", "json"}
+    format = format.lower().strip()
+    if format not in ALLOWED_FORMATS:
+            raise ValueError(f"Unsupported format '{format}'. Allowed: {ALLOWED_FORMATS}")
+
+    match format:
+        case "json":
+             return json.loads(hub_key)
+        case "plain":
+             parts = hub_key.split(":")
+             if len(parts) != 3:
+                 raise ValueError("Invalid plain format. Expected 'deviceModel:deviceRevision:serialNumber'")
+             return {"deviceModel": parts[0], "deviceRevision": parts[1], "serialNumber": parts[2]}
+        case "b64":
+             decoded = base64.urlsafe_b64decode(hub_key.encode()).decode()
+             return json.loads(decoded)
+
+class TesiraTTPException(Exception):
+    """Base exception for tesira_ttp."""
+    class NotPermitted(Exception):
+        """Raised when an action is not permitted by the integration."""
+        pass

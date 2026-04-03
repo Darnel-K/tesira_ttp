@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Sunday, March 22nd 2026, 10:04:37 PM                                                                   #
-# Last Modified: Saturday, March 28th 2026, 10:39:51 PM                                                                #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Friday, April 3rd 2026, 9:17:38 PM                                                                    #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -30,8 +30,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT, CONF_PROTO, CONF_USER, CONF_PASS
+from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT, CONF_PROTO, CONF_USER, CONF_PASS, CONF_DEVICE_INFO
 from .hub import TesiraHub
+from .util import gen_hub_key, parse_hub_key
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,9 +56,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     proto = entry.data[CONF_PROTO]
     user = entry.data.get(CONF_USER)
     pwrd = entry.data.get(CONF_PASS)
+    device_info = entry.data.get(CONF_DEVICE_INFO)
 
     hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
-    hubkey = f"{host}:{port}:{proto}"
+    hubkey = gen_hub_key(deviceModel=device_info.get("deviceModel"), deviceRevision=device_info.get("deviceRevision"), serialNumber=device_info.get("serialNumber"))
     hub = hubs.get(hubkey)
     if hub is None:
         hub = TesiraHub(host=host, port=port, proto=proto, username=user, password=pwrd, safe_mode=True)
