@@ -41,7 +41,10 @@
         "error": {
             "cannot_connect": "Cannot connect to the Tesira device.",
             "invalid_credentials": "Invalid credentials for SSH connection. Please check your username and password.",
-            "unsupported_authentication": "Authentication is not supported when using Telnet. Please switch to SSH or leave username as default and password blank."
+            "unsupported_authentication": "Authentication is not supported when using Telnet. Please switch to SSH or leave username as default and password blank.",
+            "unknown": "An unknown error occurred.",
+            "device_info_failed": "Connected to the Tesira device but failed to retrieve device information. Please check the connection and try again.",
+            "different_device": "The provided connection details correspond to a different Tesira device than the one currently configured. Please check your input and try again."
         },
         "abort": {
             "already_configured": "This Tesira device is already configured.",
