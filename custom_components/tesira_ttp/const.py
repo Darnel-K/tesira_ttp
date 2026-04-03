@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Saturday, March 28th 2026, 10:28:26 PM                                                                #
+# Last Modified: Friday, April 3rd 2026, 8:44:10 PM                                                                    #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -34,6 +34,7 @@ CONF_PORT = "port"
 CONF_PROTO = "protocol"
 CONF_USER = "username"
 CONF_PASS = "password"
+CONF_DEVICE_INFO = "device_info"
 
 # Controls live in options as a list of dicts
 CONF_CONTROLS = "controls"
