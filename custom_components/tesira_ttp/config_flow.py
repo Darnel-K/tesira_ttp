@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, April 3rd 2026, 9:27:12 PM                                                                    #
+# Last Modified: Friday, April 3rd 2026, 9:55:19 PM                                                                    #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -116,7 +116,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         device_info = await client.device_info()
                         await client.disconnect()
                         device_info = device_info["info"]
-                        _LOGGER.debug("Connectivity test successful: %s", device_info["serialNumber"])
+                        _LOGGER.debug("Connectivity test successful: Device Info: %s", device_info)
                         hub_key = gen_hub_key(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
                         # Use device_info as unique key so a Tesira device is only configured once.
                         await self.async_set_unique_id(hub_key)
@@ -174,7 +174,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         device_info = await client.device_info()
                         await client.disconnect()
                         device_info = device_info["info"]
-                        _LOGGER.debug("Connectivity test successful: %s", device_info["serialNumber"])
+                        _LOGGER.debug("Connectivity test successful: Device Info: %s", device_info)
                         if existing_device_info:
                             if device_info["serialNumber"] != existing_device_info.get("serialNumber") or device_info["deviceModel"] != existing_device_info.get("deviceModel") or device_info["deviceRevision"] != existing_device_info.get("deviceRevision"):
                                 _LOGGER.warning("Device info has changed from %s to %s. This may indicate that the connection parameters now point to a different Tesira device.", existing_device_info, device_info)
