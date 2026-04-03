@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, April 3rd 2026, 8:44:10 PM                                                                    #
+# Last Modified: Friday, April 3rd 2026, 11:44:00 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,7 +27,7 @@ from __future__ import annotations
 from homeassistant.const import Platform
 
 DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER]
+PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR]
 
 CONF_IP = "host"
 CONF_PORT = "port"
