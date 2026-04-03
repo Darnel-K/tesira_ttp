@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, April 3rd 2026, 9:17:38 PM                                                                    #
+# Last Modified: Friday, April 3rd 2026, 11:06:18 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -29,10 +29,11 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT, CONF_PROTO, CONF_USER, CONF_PASS, CONF_DEVICE_INFO
 from .hub import TesiraHub
-from .util import gen_hub_key, parse_hub_key
+from .util import gen_hub_key
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,6 +68,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 
     hass.data[DOMAIN][DATA_ENTRY_HUBKEY][entry.entry_id] = hubkey
+
+    device_registry = dr.async_get(hass)
+    device_registry.async_get_or_create(config_entry_id=entry.entry_id, identifiers={(DOMAIN, hubkey)}, manufacturer="Biamp", model=device_info.get("deviceModel"), model_id=device_info.get("deviceModel"), name=f"Biamp - {device_info.get('deviceModel')} ({device_info.get('serialNumber')})", sw_version=device_info.get("firmwareVersion"), hw_version=device_info.get("deviceRevision"), serial_number=device_info.get("serialNumber"))
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
