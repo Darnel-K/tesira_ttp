@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, April 3rd 2026, 11:18:24 PM                                                                   #
+# Last Modified: Friday, April 3rd 2026, 11:24:14 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -131,13 +131,11 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
         self._level_db: float | None = None
         self._muted: bool | None = None
 
-
     @property
     def device_info(self):
         return {
             "identifiers": {(DOMAIN, self._hubkey)}
         }
-
 
     @property
     def volume_level(self) -> float | None:
