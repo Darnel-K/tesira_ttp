@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, April 3rd 2026, 9:17:38 PM                                                                    #
+# Last Modified: Friday, April 3rd 2026, 11:24:14 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -86,7 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         min_db = float(c.get(CONF_MIN_DB, DEFAULT_MIN_DB))
         max_db = float(c.get(CONF_MAX_DB, DEFAULT_MAX_DB))
         step_db = float(c.get(CONF_STEP_DB, DEFAULT_STEP_DB))
-        entities.append(TesiraVolumeMediaPlayer(hub, host, port, name, tag, ch, min_db, max_db, step_db))
+        entities.append(TesiraVolumeMediaPlayer(hub, hubkey, host, port, name, tag, ch, min_db, max_db, step_db))
 
     async_add_entities(entities, update_before_add=True)
 
@@ -96,6 +96,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
     def __init__(
         self,
         hub: TesiraHub,
+        hubkey: str,
         host: str,
         port: int,
         name: str,
@@ -106,6 +107,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
         step_db: float,
     ) -> None:
         self._hub = hub
+        self._hubkey = hubkey
         self._host = host
         self._port = port
         self._tag = instance_tag
@@ -128,6 +130,12 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
 
         self._level_db: float | None = None
         self._muted: bool | None = None
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._hubkey)}
+        }
 
     @property
     def volume_level(self) -> float | None:
