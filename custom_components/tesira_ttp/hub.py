@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\hub.py                                                                       #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Saturday, April 4th 2026, 2:18:05 PM                                                                  #
+# Created Date: Friday, April 3rd 2026, 11:30:15 PM                                                                    #
+# Last Modified: Saturday, April 4th 2026, 2:25:59 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -76,6 +76,13 @@ class TesiraHub:
         device_info = await self.client.device_info()
         device_info = device_info["info"]
         return gen_hub_key(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
+
+    @property
+    def is_connected(self) -> bool:
+        if self.client._conn is not None:
+            return True
+        else:
+            return False
 
     async def json(self, cmd: str):
         async with self._lock:
