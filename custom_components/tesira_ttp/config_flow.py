@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, April 3rd 2026, 9:55:19 PM                                                                    #
+# Last Modified: Saturday, April 4th 2026, 9:49:42 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -237,12 +237,24 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         return self.async_show_menu(
             step_id="init",
-            menu_options=["add", "edit", "remove"],
+            menu_options=["devices", "entities"],
         )
 
-    async def async_step_add(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_entities(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        return self.async_show_menu(
+            step_id="entities",
+            menu_options=["add_entity", "select_entity", "remove_entity"],
+        )
+
+    async def async_step_devices(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        return self.async_show_menu(
+            step_id="devices",
+            menu_options=["add_device", "select_device", "remove_device"],
+        )
+
+    async def async_step_add_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if user_input is None:
-            return self.async_show_form(step_id="add", data_schema=_control_schema(), errors={})
+            return self.async_show_form(step_id="add_entity", data_schema=_control_schema(), errors={})
 
         controls = self._controls
         controls.append(
@@ -257,26 +269,26 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
         )
         return self.async_create_entry(title="", data={CONF_CONTROLS: controls})
 
-    async def async_step_edit(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_select_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         labels = self._label_map()
         if not labels:
             return self.async_abort(reason="no_controls")
 
         if user_input is None:
             schema = vol.Schema({vol.Required("which"): vol.In(list(labels.keys()))})
-            return self.async_show_form(step_id="edit", data_schema=schema, errors={})
+            return self.async_show_form(step_id="select_entity", data_schema=schema, errors={})
 
         self._edit_index = labels[user_input["which"]]
         defaults = self._controls[self._edit_index]
-        return self.async_show_form(step_id="edit_control", data_schema=_control_schema(defaults), errors={})
+        return self.async_show_form(step_id="edit_entity", data_schema=_control_schema(defaults), errors={})
 
-    async def async_step_edit_control(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_edit_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if self._edit_index is None:
             return self.async_abort(reason="unknown")
 
         if user_input is None:
             defaults = self._controls[self._edit_index]
-            return self.async_show_form(step_id="edit_control", data_schema=_control_schema(defaults), errors={})
+            return self.async_show_form(step_id="edit_entity", data_schema=_control_schema(defaults), errors={})
 
         controls = self._controls
         controls[self._edit_index] = {
@@ -290,14 +302,14 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
         self._edit_index = None
         return self.async_create_entry(title="", data={CONF_CONTROLS: controls})
 
-    async def async_step_remove(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_remove_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         labels = self._label_map()
         if not labels:
             return self.async_abort(reason="no_controls")
 
         if user_input is None:
             schema = vol.Schema({vol.Required("remove"): cv.multi_select(labels)})
-            return self.async_show_form(step_id="remove", data_schema=schema, errors={})
+            return self.async_show_form(step_id="remove_entity", data_schema=schema, errors={})
 
         selected_labels = set(user_input["remove"])
         selected_indices = {labels[label] for label in selected_labels}

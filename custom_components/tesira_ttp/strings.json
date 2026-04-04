@@ -54,15 +54,56 @@
     "options": {
         "step": {
             "init": {
-                "title": "Configure controls",
+                "title": "Configure Tesira Text Protocol options",
                 "menu_options": {
-                    "add": "Add control",
-                    "edit": "Edit control",
-                    "remove": "Remove control"
+                    "devices": "Configure Devices",
+                    "entities": "Configure Entities"
                 }
             },
-            "add": {
-                "title": "Add control",
+            "devices": {
+                "title": "Configure Devices",
+                "menu_options": {
+                    "add_device": "Add Device",
+                    "edit_device": "Edit Device",
+                    "remove_device": "Remove Device"
+                }
+            },
+            "add_device": {
+                "title": "Add Device",
+                "data": {
+                    "host": "Host",
+                    "port": "Port",
+                    "protocol": "Protocol",
+                    "username": "Username (SSH only)",
+                    "password": "Password (SSH only)"
+                }
+            },
+            "select_device": {
+                "title": "Select Device"
+            },
+            "edit_device": {
+                "title": "Edit Device",
+                "data": {
+                    "host": "Host",
+                    "port": "Port",
+                    "protocol": "Protocol",
+                    "username": "Username (SSH only)",
+                    "password": "Password (SSH only)"
+                }
+            },
+            "remove_device": {
+                "title": "Remove Devices"
+            },
+            "entities": {
+                "title": "Configure Entities",
+                "menu_options": {
+                    "add_entity": "Add Entity",
+                    "select_entity": "Edit Entity",
+                    "remove_entity": "Remove Entity"
+                }
+            },
+            "add_entity": {
+                "title": "Add Entity",
                 "data": {
                     "name": "Name",
                     "instance_tag": "Instance tag",
@@ -72,11 +113,11 @@
                     "step_db": "Step dB"
                 }
             },
-            "edit": {
-                "title": "Select control"
+            "select_entity": {
+                "title": "Select Entity"
             },
-            "edit_control": {
-                "title": "Edit control",
+            "edit_entity": {
+                "title": "Edit Entity",
                 "data": {
                     "name": "Name",
                     "instance_tag": "Instance tag",
@@ -86,12 +127,12 @@
                     "step_db": "Step dB"
                 }
             },
-            "remove": {
-                "title": "Remove controls"
+            "remove_entity": {
+                "title": "Remove Entities"
             }
         },
         "abort": {
-            "no_controls": "No controls are configured."
+            "no_controls": "No entities are configured."
         }
     }
 }
