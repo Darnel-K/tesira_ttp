@@ -1,5 +1,5 @@
 # #################################################################################################################### #
-# Filename: \custom_components\tesira_ttp\const.py                                                                     #
+# Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
 # Last Modified: Sunday, April 5th 2026, 6:46:41 PM                                                                    #
@@ -22,38 +22,46 @@
 # You should have received a copy of the GNU Affero General Public License                                             #
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
 # #################################################################################################################### #
+
 from __future__ import annotations
 
-from homeassistant.const import Platform
+import logging
+import voluptuous as vol
+import homeassistant.helpers.config_validation as cv
 
-DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR]
+from typing import Any
+from homeassistant.helpers.selector import selector
+from .const import (
+    DOMAIN,
+    CONF_IP,
+    CONF_PORT,
+    CONF_PROTO,
+    CONF_USER,
+    CONF_PASS,
+    DEFAULT_IP,
+    DEFAULT_PORT,
+    DEFAULT_PROTO,
+    DEFAULT_USER,
+    DEFAULT_PASS
+)
 
-CONF_IP = "host"
-CONF_PORT = "port"
-CONF_PROTO = "protocol"
-CONF_USER = "username"
-CONF_PASS = "password"
-CONF_DEVICE_INFO = "device_info"
+_LOGGER = logging.getLogger(__name__)
 
-# Controls live in options as a list of dicts
-CONF_CONTROLS = "controls"
-CONF_ITEMS = "items"
-
-CONF_CONTROL_NAME = "name"
-CONF_INSTANCE_TAG = "instance_tag"
-CONF_CHANNEL = "channel"
-CONF_MIN_DB = "min_db"
-CONF_MAX_DB = "max_db"
-CONF_STEP_DB = "step_db"
-
-DEFAULT_IP = "0.0.0.0"
-DEFAULT_PORT = 22
-DEFAULT_PROTO = "ssh"
-DEFAULT_USER = "default"
-DEFAULT_PASS = ""
-DEFAULT_CONTROL_NAME = "Tesira Volume"
-DEFAULT_CHANNEL = 1
-DEFAULT_MIN_DB = -100.0
-DEFAULT_MAX_DB = 12.0
-DEFAULT_STEP_DB = 0.5
+def _device_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(CONF_IP, default=d.get(CONF_IP, DEFAULT_IP)): cv.string,
+            vol.Optional(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): cv.port,
+            vol.Required(CONF_PROTO, default=d.get(CONF_PROTO, DEFAULT_PROTO)): selector({
+                "select": {
+                    "options": [
+                        {"value": "ssh", "label": "SSH"},
+                        {"value": "telnet", "label": "Telnet"}
+                    ]
+                }
+            }),
+            vol.Optional(CONF_USER, default=d.get(CONF_USER, DEFAULT_USER)): cv.string,
+            vol.Optional(CONF_PASS, default=d.get(CONF_PASS, DEFAULT_PASS)): cv.string
+        }
+    )

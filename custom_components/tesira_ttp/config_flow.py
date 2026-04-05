@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Saturday, April 4th 2026, 9:49:42 PM                                                                  #
+# Last Modified: Sunday, April 5th 2026, 6:59:30 PM                                                                    #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -43,6 +43,7 @@ from .const import (
     CONF_PASS,
     CONF_DEVICE_INFO,
     CONF_CONTROLS,
+    CONF_ITEMS,
     CONF_CONTROL_NAME,
     CONF_INSTANCE_TAG,
     CONF_CHANNEL,
@@ -61,6 +62,7 @@ from .const import (
 )
 from .tesira_client import TesiraClient
 from .util import schema_with_defaults, gen_hub_key, TesiraTTPException
+from .schemas import _device_schema
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -96,6 +98,16 @@ def _control_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
 
 class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
+
+    @property
+    def _primary_device(self) -> dict[str, Any]:
+        items = dict(self.config_entry.options.get(CONF_ITEMS, {}))
+        return (items.get("devices")).get("primary", {})
+
+    @property
+    def _secondary_devices(self) -> list[dict[str, Any]]:
+        items = dict(self.config_entry.options.get(CONF_ITEMS, {}))
+        return (items.get("devices")).get("secondary", [])
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         errors: dict[str, str] = {}
