@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 5th 2026, 6:59:30 PM                                                                    #
+# Last Modified: Sunday, April 5th 2026, 9:19:42 PM                                                                    #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -61,8 +61,8 @@ from .const import (
     DEFAULT_STEP_DB
 )
 from .tesira_client import TesiraClient
-from .util import schema_with_defaults, gen_hub_key, TesiraTTPException
-from .schemas import _device_schema
+from .util import gen_hub_key, TesiraTTPException
+from .schemas import _device_schema, _control_schema
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,31 +83,18 @@ STEP_USER_SCHEMA = vol.Schema(
     }
 )
 
-def _control_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
-    d = defaults or {}
-    return vol.Schema(
-        {
-            vol.Optional(CONF_CONTROL_NAME, default=d.get(CONF_CONTROL_NAME, DEFAULT_CONTROL_NAME)): cv.string,
-            vol.Required(CONF_INSTANCE_TAG, default=d.get(CONF_INSTANCE_TAG, "volume")): cv.string,
-            vol.Optional(CONF_CHANNEL, default=int(d.get(CONF_CHANNEL, DEFAULT_CHANNEL))): vol.Coerce(int),
-            vol.Optional(CONF_MIN_DB, default=float(d.get(CONF_MIN_DB, DEFAULT_MIN_DB))): vol.Coerce(float),
-            vol.Optional(CONF_MAX_DB, default=float(d.get(CONF_MAX_DB, DEFAULT_MAX_DB))): vol.Coerce(float),
-            vol.Optional(CONF_STEP_DB, default=float(d.get(CONF_STEP_DB, DEFAULT_STEP_DB))): vol.Coerce(float),
-        }
-    )
-
 class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     @property
     def _primary_device(self) -> dict[str, Any]:
         items = dict(self.config_entry.options.get(CONF_ITEMS, {}))
-        return (items.get("devices")).get("primary", {})
+        return (items.get("devices", {})).get("primary", {})
 
     @property
     def _secondary_devices(self) -> list[dict[str, Any]]:
         items = dict(self.config_entry.options.get(CONF_ITEMS, {}))
-        return (items.get("devices")).get("secondary", [])
+        return (items.get("devices", [])).get("secondary", [])
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         errors: dict[str, str] = {}
@@ -137,26 +124,26 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         _LOGGER.debug("Connectivity test succeeded but failed to get device info: %s", e)
                         errors["base"] = "device_info_failed"
                         await client.disconnect()
-                        return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
+                        return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
                 else:
                     raise ConnectionError("Failed to establish connection")
             except TesiraClient.InvalidCredentials as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "invalid_credentials"
-                return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
+                return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
             except TesiraClient.AuthenticationUnsupportedError as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "unsupported_authentication"
-                return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
+                return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
             except Exception as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "cannot_connect"
-                return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
+                return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
 
             title = f"Biamp - {device_info['deviceModel']} - {device_info['serialNumber']} - {host}:{port}"
             return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port, CONF_PROTO: proto, CONF_USER: user, CONF_PASS: pwrd, CONF_DEVICE_INFO: device_info})
 
-        return self.async_show_form(step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
+        return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         errors: dict[str, str] = {}
@@ -168,7 +155,6 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_PROTO: entry.data.get(CONF_PROTO),
             CONF_USER: entry.data.get(CONF_USER)
         }
-        schema = schema_with_defaults(STEP_USER_SCHEMA, defaults)
         existing_device_info = entry.data.get(CONF_DEVICE_INFO)
 
         if user_input is not None:
@@ -195,30 +181,30 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         _LOGGER.debug("Connectivity test succeeded but device info has changed: %s", e)
                         errors["base"] = "different_device"
                         await client.disconnect()
-                        return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+                        return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
                     except Exception as e:
                         _LOGGER.debug("Connectivity test succeeded but failed to get device info: %s", e)
                         errors["base"] = "device_info_failed"
                         await client.disconnect()
-                        return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+                        return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
                 else:
                     raise ConnectionError("Failed to establish connection")
             except TesiraClient.InvalidCredentials as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "invalid_credentials"
-                return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+                return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
             except TesiraClient.AuthenticationUnsupportedError as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "unsupported_authentication"
-                return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+                return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
             except Exception as e:
                 _LOGGER.debug("Connectivity test failed: %s", e)
                 errors["base"] = "cannot_connect"
-                return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+                return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
 
             return self.async_update_reload_and_abort(entry, data_updates=user_input)
 
-        return self.async_show_form(step_id="reconfigure", data_schema=schema, errors=errors)
+        return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
 
     @staticmethod
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:

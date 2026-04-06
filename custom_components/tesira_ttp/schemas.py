@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 5th 2026, 6:46:41 PM                                                                    #
+# Last Modified: Sunday, April 5th 2026, 9:10:10 PM                                                                    #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -42,7 +42,18 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_PROTO,
     DEFAULT_USER,
-    DEFAULT_PASS
+    DEFAULT_PASS,
+    CONF_CONTROL_NAME,
+    CONF_INSTANCE_TAG,
+    CONF_CHANNEL,
+    CONF_MIN_DB,
+    CONF_MAX_DB,
+    CONF_STEP_DB,
+    DEFAULT_CONTROL_NAME,
+    DEFAULT_CHANNEL,
+    DEFAULT_MIN_DB,
+    DEFAULT_MAX_DB,
+    DEFAULT_STEP_DB
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,5 +74,18 @@ def _device_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             }),
             vol.Optional(CONF_USER, default=d.get(CONF_USER, DEFAULT_USER)): cv.string,
             vol.Optional(CONF_PASS, default=d.get(CONF_PASS, DEFAULT_PASS)): cv.string
+        }
+    )
+
+def _control_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Optional(CONF_CONTROL_NAME, default=d.get(CONF_CONTROL_NAME, DEFAULT_CONTROL_NAME)): cv.string,
+            vol.Required(CONF_INSTANCE_TAG, default=d.get(CONF_INSTANCE_TAG, "volume")): cv.string,
+            vol.Optional(CONF_CHANNEL, default=int(d.get(CONF_CHANNEL, DEFAULT_CHANNEL))): vol.Coerce(int),
+            vol.Optional(CONF_MIN_DB, default=float(d.get(CONF_MIN_DB, DEFAULT_MIN_DB))): vol.Coerce(float),
+            vol.Optional(CONF_MAX_DB, default=float(d.get(CONF_MAX_DB, DEFAULT_MAX_DB))): vol.Coerce(float),
+            vol.Optional(CONF_STEP_DB, default=float(d.get(CONF_STEP_DB, DEFAULT_STEP_DB))): vol.Coerce(float),
         }
     )
