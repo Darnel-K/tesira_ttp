@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 5th 2026, 9:19:42 PM                                                                    #
+# Last Modified: Tuesday, April 7th 2026, 11:21:40 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -26,14 +26,55 @@
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Any
+from .const import DOMAIN, CONF_HOST, CONF_PORT, CONF_PROTO, CONF_USER, CONF_PASS
 
 import base64
 import json
+import copy
 
-def gen_hub_key(deviceModel: str, deviceRevision: int, serialNumber: str, format: str = "b64") -> str:
+def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, device_info: dict, device_id: str = None) -> Dict[str, Any]:
     """
-    Generate a unique key for a Tesira hub based on connection parameters.
+    Generate a dictionary template for a Tesira device.
+
+    Returns:
+        A dictionary with the structure for storing device information and connection details.
+    """
+    if device_id is None:
+        device_id = gen_device_id(device_info["deviceModel"], device_info["deviceRevision"], device_info["serialNumber"])
+    return {
+        "connection_info": {
+            CONF_HOST: host,
+            CONF_PORT: port,
+            CONF_PROTO: proto,
+            "auth": {
+                CONF_USER: user,
+                CONF_PASS: pwrd
+            }
+        },
+        "device_info": {
+            "name": f"Biamp - {device_info['deviceModel']} - {device_info['serialNumber']} - {host}:{port}",
+            "manufacturer": "Biamp",
+            "model": device_info["deviceModel"],
+            "model_id": device_info["deviceModel"],
+            "sw_version": device_info["firmwareVersion"],
+            "hw_version": device_info["deviceRevision"],
+            "serial_number": device_info["serialNumber"]
+        }
+    }
+
+def _redact_device(device: dict[str, Any]) -> dict[str, Any]:
+    redacted = copy.deepcopy(device)
+    auth = redacted.get("connection_info", {}).get("auth")
+    if auth:
+        auth[CONF_USER] = "***"
+        auth[CONF_PASS] = "***"
+    return redacted
+
+
+def gen_device_id(deviceModel: str, deviceRevision: int, serialNumber: str, format: str = "b64") -> str:
+    """
+    Generate a unique key for a Tesira device based on its properties.
 
     Args:
 
@@ -43,29 +84,29 @@ def gen_hub_key(deviceModel: str, deviceRevision: int, serialNumber: str, format
         format: The output format of the key ("b64" for base64, "plain" for raw string, "json" for JSON).
 
     Returns:
-        A unique string key representing the hub configuration.
+        A unique string key representing the device configuration.
     """
     ALLOWED_FORMATS = {"b64", "plain", "json"}
-    hub_key = {"deviceModel": deviceModel.lower(), "deviceRevision": deviceRevision.lower(), "serialNumber": serialNumber.lower()}
+    device_id = {"deviceModel": deviceModel.lower(), "deviceRevision": deviceRevision.lower(), "serialNumber": serialNumber.lower()}
     format = format.lower().strip()
     if format not in ALLOWED_FORMATS:
             raise ValueError(f"Unsupported format '{format}'. Allowed: {ALLOWED_FORMATS}")
 
     match format:
         case "json":
-             return json.dumps(hub_key, sort_keys=True)
+             return json.dumps(device_id, sort_keys=True)
         case "plain":
-             return f"{hub_key['deviceModel']}:{hub_key['deviceRevision']}:{hub_key['serialNumber']}"
+             return f"{device_id['deviceModel']}:{device_id['deviceRevision']}:{device_id['serialNumber']}"
         case "b64":
-             return base64.urlsafe_b64encode(json.dumps(hub_key, sort_keys=True).encode()).decode()
+             return base64.urlsafe_b64encode(json.dumps(device_id, sort_keys=True).encode()).decode()
 
-def parse_hub_key(hub_key: str, format: str = "b64") -> Dict[str, str]:
+def parse_device_id(device_id: str, format: str = "b64") -> Dict[str, str]:
     """
-    Parse a hub key back into its components.
+    Parse a device ID back into its components.
 
     Args:
-        hub_key: The unique key representing the hub configuration.
-        format: The format of the input key ("b64" for base64, "plain" for raw string, "json" for JSON).
+        device_id: The unique ID representing the device configuration.
+        format: The format of the input ID ("b64" for base64, "plain" for raw string, "json" for JSON).
 
     Returns:
         A dictionary containing the original parameters (deviceModel, deviceRevision, serialNumber).
@@ -77,14 +118,14 @@ def parse_hub_key(hub_key: str, format: str = "b64") -> Dict[str, str]:
 
     match format:
         case "json":
-             return json.loads(hub_key)
+             return json.loads(device_id)
         case "plain":
-             parts = hub_key.split(":")
+             parts = device_id.split(":")
              if len(parts) != 3:
                  raise ValueError("Invalid plain format. Expected 'deviceModel:deviceRevision:serialNumber'")
              return {"deviceModel": parts[0], "deviceRevision": parts[1], "serialNumber": parts[2]}
         case "b64":
-             decoded = base64.urlsafe_b64decode(hub_key.encode()).decode()
+             decoded = base64.urlsafe_b64decode(device_id.encode()).decode()
              return json.loads(decoded)
 
 class TesiraTTPException(Exception):

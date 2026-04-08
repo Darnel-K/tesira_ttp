@@ -4,6 +4,13 @@
     "config": {
         "step": {
             "user": {
+                "title": "Set hub title",
+                "description": "Enter a title for this hub. This is used to differentiate between multiple Tesira systems if you have more than one and will be displayed in the Home Assistant UI.",
+                "data": {
+                    "hub_title": "Hub title"
+                }
+            },
+            "add_first_device": {
                 "title": "Connect your Tesira DSP",
                 "description": "Enter the Tesira DSP host, port, protocol & credentials for the Tesira Text Protocol server.",
                 "data": {
@@ -15,14 +22,64 @@
                 }
             },
             "reconfigure": {
-                "title": "Reconfigure Tesira DSP connection",
-                "description": "Enter the Tesira DSP host, port, protocol & credentials for the Tesira Text Protocol server.",
+                "title": "Configure Tesira Text Protocol settings",
+                "menu_options": {
+                    "edit_hub_title": "Change hub title",
+                    "devices": "Configure Devices"
+                }
+            },
+            "edit_hub_title": {
+                "title": "Change hub title",
+                "description": "You can change the hub title here. This is used to differentiate between multiple Tesira systems if you have more than one and will be displayed in the Home Assistant UI.",
+                "data": {
+                    "hub_title": "Hub title"
+                }
+            },
+            "devices": {
+                "title": "Configure Devices",
+                "menu_options": {
+                    "add_device": "Add Device",
+                    "select_device": "Edit Device",
+                    "remove_device": "Remove Device",
+                    "change_primary": "Change Primary Device"
+                }
+            },
+            "add_device": {
+                "title": "Add Device",
                 "data": {
                     "host": "Host",
                     "port": "Port",
                     "protocol": "Protocol",
                     "username": "Username (SSH only)",
                     "password": "Password (SSH only)"
+                }
+            },
+            "select_device": {
+                "title": "Select Device",
+                "data": {
+                    "select": "Select a device to edit"
+                }
+            },
+            "edit_device": {
+                "title": "Edit Device",
+                "data": {
+                    "host": "Host",
+                    "port": "Port",
+                    "protocol": "Protocol",
+                    "username": "Username (SSH only)",
+                    "password": "Password (SSH only)"
+                }
+            },
+            "remove_device": {
+                "title": "Remove Devices",
+                "data": {
+                    "select": "Select a device to remove"
+                }
+            },
+            "change_primary": {
+                "title": "Change Primary Device",
+                "data": {
+                    "select": "Select a device to change to primary"
                 }
             },
             "control": {
@@ -44,57 +101,25 @@
             "unsupported_authentication": "Authentication is not supported when using Telnet. Please switch to SSH or leave username as default and password blank.",
             "unknown": "An unknown error occurred.",
             "device_info_failed": "Connected to the Tesira device but failed to retrieve device information. Please check the connection and try again.",
-            "different_device": "The provided connection details correspond to a different Tesira device than the one currently configured. Please check your input and try again."
+            "different_device": "The provided connection details correspond to a different Tesira device than the one currently configured. Please check your input and try again.",
+            "device_not_found": "The device was not found in the existing configuration. This should never happen. Please check your input and try again.",
+            "device_exists": "A device with the same ID already exists in the configuration. Please check your input and try again.",
+            "cannot_remove_primary": "Cannot remove the primary device. Please change the primary device before removing this one.",
+            "already_primary": "Selected device is already the primary device."
         },
         "abort": {
             "already_configured": "This Tesira device is already configured.",
-            "reconfigure_successful": "Tesira DSP connection reconfigured successfully."
+            "reconfigure_successful": "Tesira DSP connection reconfigured successfully.",
+            "no_devices": "No devices are configured. Please add a device first.",
+            "device_removed": "Device(s) removed successfully.",
+            "device_updated": "Device updated successfully.",
+            "primary_changed": "Primary device changed successfully.",
+            "device_added": "Device added successfully."
         }
     },
     "options": {
         "step": {
             "init": {
-                "title": "Configure Tesira Text Protocol options",
-                "menu_options": {
-                    "devices": "Configure Devices",
-                    "entities": "Configure Entities"
-                }
-            },
-            "devices": {
-                "title": "Configure Devices",
-                "menu_options": {
-                    "add_device": "Add Device",
-                    "edit_device": "Edit Device",
-                    "remove_device": "Remove Device"
-                }
-            },
-            "add_device": {
-                "title": "Add Device",
-                "data": {
-                    "host": "Host",
-                    "port": "Port",
-                    "protocol": "Protocol",
-                    "username": "Username (SSH only)",
-                    "password": "Password (SSH only)"
-                }
-            },
-            "select_device": {
-                "title": "Select Device"
-            },
-            "edit_device": {
-                "title": "Edit Device",
-                "data": {
-                    "host": "Host",
-                    "port": "Port",
-                    "protocol": "Protocol",
-                    "username": "Username (SSH only)",
-                    "password": "Password (SSH only)"
-                }
-            },
-            "remove_device": {
-                "title": "Remove Devices"
-            },
-            "entities": {
                 "title": "Configure Entities",
                 "menu_options": {
                     "add_entity": "Add Entity",

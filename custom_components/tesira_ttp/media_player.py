@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, April 3rd 2026, 11:24:14 PM                                                                   #
+# Last Modified: Wednesday, April 8th 2026, 10:06:46 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -42,8 +42,6 @@ from .const import (
     CONF_MIN_DB,
     CONF_MAX_DB,
     CONF_STEP_DB,
-    CONF_IP,
-    CONF_PORT,
     CONF_DEVICE_INFO,
     DEFAULT_CONTROL_NAME,
     DEFAULT_CHANNEL,
@@ -52,7 +50,6 @@ from .const import (
     DEFAULT_STEP_DB,
 )
 from .hub import TesiraHub
-from .util import gen_hub_key
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,10 +67,10 @@ def level01_to_db(level01: float, min_db: float, max_db: float) -> float:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     # Find shared hub by host:port
-    host = entry.data[CONF_IP]
-    port = entry.data[CONF_PORT]
-    device_info = entry.data[CONF_DEVICE_INFO]
-    hubkey = gen_hub_key(deviceModel=device_info.get("deviceModel"), deviceRevision=device_info.get("deviceRevision"), serialNumber=device_info.get("serialNumber"))
+    # host = entry.data[CONF_HOST]
+    # port = entry.data[CONF_PORT]
+    # device_info = entry.data[CONF_DEVICE_INFO]
+    hubkey = entry.entry_id
     hub: TesiraHub = hass.data[DOMAIN]["hubs"][hubkey]
 
     controls: list[dict[str, Any]] = list(entry.options.get(CONF_CONTROLS, []))
@@ -86,7 +83,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         min_db = float(c.get(CONF_MIN_DB, DEFAULT_MIN_DB))
         max_db = float(c.get(CONF_MAX_DB, DEFAULT_MAX_DB))
         step_db = float(c.get(CONF_STEP_DB, DEFAULT_STEP_DB))
-        entities.append(TesiraVolumeMediaPlayer(hub, hubkey, host, port, name, tag, ch, min_db, max_db, step_db))
+        entities.append(TesiraVolumeMediaPlayer(hub, hubkey, name, tag, ch, min_db, max_db, step_db))
 
     async_add_entities(entities, update_before_add=True)
 
@@ -97,8 +94,6 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
         self,
         hub: TesiraHub,
         hubkey: str,
-        host: str,
-        port: int,
         name: str,
         instance_tag: str,
         channel: int,
@@ -108,8 +103,6 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
     ) -> None:
         self._hub = hub
         self._hubkey = hubkey
-        self._host = host
-        self._port = port
         self._tag = instance_tag
         self._ch = channel
         self._min_db = min_db
@@ -117,7 +110,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
         self._step_db = step_db
 
         self._attr_name = name
-        self._attr_unique_id = f"tesira_ttp_{host}_{port}_{self._tag}_{self._ch}".lower()
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey}_{self._tag}_{self._ch}".lower()
 
         self._attr_supported_features = (
             MediaPlayerEntityFeature.VOLUME_SET
@@ -130,12 +123,6 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
 
         self._level_db: float | None = None
         self._muted: bool | None = None
-
-    @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self._hubkey)}
-        }
 
     @property
     def volume_level(self) -> float | None:
@@ -168,7 +155,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
                 pass
 
         except Exception as e:
-            _LOGGER.debug("Update failed for %s/%s ch %s: %s", self._host, self._tag, self._ch, e)
+            _LOGGER.debug("Update failed for %s/%s ch %s: %s", self._hubkey, self._tag, self._ch, e)
             self._attr_available = False
             self._attr_state = MediaPlayerState.UNAVAILABLE
 

@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 5th 2026, 9:10:10 PM                                                                    #
+# Last Modified: Monday, April 6th 2026, 10:10:59 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -33,7 +33,8 @@ from typing import Any
 from homeassistant.helpers.selector import selector
 from .const import (
     DOMAIN,
-    CONF_IP,
+    CONF_HUB_TITLE,
+    CONF_HOST,
     CONF_PORT,
     CONF_PROTO,
     CONF_USER,
@@ -58,11 +59,19 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+def _hub(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(CONF_HUB_TITLE, default=d.get(CONF_HUB_TITLE, "")): cv.string
+        }
+    )
+
 def _device_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     d = defaults or {}
     return vol.Schema(
         {
-            vol.Required(CONF_IP, default=d.get(CONF_IP, DEFAULT_IP)): cv.string,
+            vol.Required(CONF_HOST, default=d.get(CONF_HOST, DEFAULT_IP)): cv.string,
             vol.Optional(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): cv.port,
             vol.Required(CONF_PROTO, default=d.get(CONF_PROTO, DEFAULT_PROTO)): selector({
                 "select": {

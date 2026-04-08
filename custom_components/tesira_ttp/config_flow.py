@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 5th 2026, 9:19:42 PM                                                                    #
+# Last Modified: Wednesday, April 8th 2026, 9:16:23 PM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import logging
+import copy
 from typing import Any
 
 import voluptuous as vol
@@ -36,175 +37,284 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import (
     DOMAIN,
-    CONF_IP,
+    CONF_HUB_TITLE,
+    CONF_HOST,
     CONF_PORT,
     CONF_PROTO,
     CONF_USER,
     CONF_PASS,
-    CONF_DEVICE_INFO,
     CONF_CONTROLS,
-    CONF_ITEMS,
+    CONF_DEVICES,
     CONF_CONTROL_NAME,
     CONF_INSTANCE_TAG,
     CONF_CHANNEL,
     CONF_MIN_DB,
     CONF_MAX_DB,
     CONF_STEP_DB,
-    DEFAULT_PORT,
-    DEFAULT_PROTO,
-    DEFAULT_USER,
-    DEFAULT_PASS,
     DEFAULT_CONTROL_NAME,
-    DEFAULT_CHANNEL,
-    DEFAULT_MIN_DB,
-    DEFAULT_MAX_DB,
-    DEFAULT_STEP_DB
+    DEFAULT_DEVICES,
+    MODE_INIT,
+    MODE_RECONFIGURE
 )
 from .tesira_client import TesiraClient
-from .util import gen_hub_key, TesiraTTPException
-from .schemas import _device_schema, _control_schema
+from .util import gen_device_id, gen_device_dict, _redact_device, TesiraTTPException
+from .schemas import _device_schema, _control_schema, _hub
 
 _LOGGER = logging.getLogger(__name__)
-
-STEP_USER_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_IP): cv.string,
-        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-        vol.Required(CONF_PROTO, default=DEFAULT_PROTO): selector({
-            "select": {
-                "options": [
-                    {"value": "ssh", "label": "SSH"},
-                    {"value": "telnet", "label": "Telnet"}
-                ]
-            }
-        }),
-        vol.Optional(CONF_USER, default=DEFAULT_USER): cv.string,
-        vol.Optional(CONF_PASS, default=DEFAULT_PASS): cv.string
-    }
-)
 
 class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     @property
-    def _primary_device(self) -> dict[str, Any]:
-        items = dict(self.config_entry.options.get(CONF_ITEMS, {}))
-        return (items.get("devices", {})).get("primary", {})
+    def _devices(self) -> dict[str, Any]:
+        entry = self.context.get("entry")
+        if entry is None:
+            return copy.deepcopy(DEFAULT_DEVICES)
 
-    @property
-    def _secondary_devices(self) -> list[dict[str, Any]]:
-        items = dict(self.config_entry.options.get(CONF_ITEMS, {}))
-        return (items.get("devices", [])).get("secondary", [])
+        return copy.deepcopy(entry.data.get(CONF_DEVICES, DEFAULT_DEVICES))
+
+    def _name_map(self) -> dict[str, str]:
+        """Return a mapping of human-readable device names to device IDs."""
+
+        devices = self._devices.get("items", {})
+        name_map: dict[str, str] = {}
+        seen_names: set[str] = set()
+
+        for device_id, device in devices.items():
+            info = device.get("device_info", {})
+            base_name = info.get("name", "Unknown Device")
+            serial = info.get("serial_number")
+
+            name = base_name
+
+            # Ensure uniqueness of displayed names
+            if name in seen_names:
+                suffix = serial or device_id[:8]
+                name = f"{base_name} ({suffix})"
+
+            seen_names.add(name)
+            name_map[name] = device_id
+
+        return dict(sorted(name_map.items()))
+
+    async def _connectivity_test(self, host: str, port: int, proto: str, user: str, pwrd: str) -> tuple[dict[str, Any] | None, str | None]:
+        try:
+            client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
+            await client.connect()
+            if client._conn is not None:
+                try:
+                    device_info = await client.device_info()
+                    device_info = device_info["info"]
+                    _LOGGER.debug("Connectivity test successful: Device Info: %s", device_info)
+                    return device_info, None
+                except Exception as e:
+                    _LOGGER.debug("Connectivity test succeeded but failed to get device info: %s", e)
+                    return None, "device_info_failed"
+                finally:
+                    await client.disconnect()
+            else:
+                raise ConnectionError("Failed to establish connection")
+        except TesiraClient.InvalidCredentials as e:
+            _LOGGER.debug("Connectivity test failed: %s", e)
+            return None, "invalid_credentials"
+        except TesiraClient.AuthenticationUnsupportedError as e:
+            _LOGGER.debug("Connectivity test failed: %s", e)
+            return None, "unsupported_authentication"
+        except Exception as e:
+            _LOGGER.exception("Connectivity test failed: %s", e)
+            return None, "cannot_connect"
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        errors: dict[str, str] = {}
+        form_errors: dict[str, str] = {}
+        form_data: dict[str, Any] = {}
 
         if user_input is not None:
-            host = user_input[CONF_IP]
-            port = user_input[CONF_PORT]
-            proto = user_input[CONF_PROTO]
-            user = user_input[CONF_USER]
+            form_data[CONF_HUB_TITLE] = user_input[CONF_HUB_TITLE]
+
+            self.context[CONF_HUB_TITLE] = form_data[CONF_HUB_TITLE]
+            return self.async_show_form(step_id="add_device", data_schema=_device_schema(), errors={})
+
+        return self.async_show_form(step_id="user", data_schema=_hub(form_data), errors=form_errors)
+
+    async def async_step_add_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        form_errors: dict[str, str] = {}
+        entry = self.context.get("entry")
+        mode = MODE_RECONFIGURE if entry else MODE_INIT
+        form_data: dict[str, Any] = {}
+
+        if user_input is not None:
+            form_data[CONF_HOST] = user_input[CONF_HOST]
+            form_data[CONF_PORT] = user_input[CONF_PORT]
+            form_data[CONF_PROTO] = user_input[CONF_PROTO]
+            form_data[CONF_USER] = user_input[CONF_USER]
             pwrd = user_input[CONF_PASS]
 
-            # Quick connectivity probe.
-            try:
-                client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
-                await client.connect()
-                if client._conn is not None:
-                    try:
-                        device_info = await client.device_info()
-                        await client.disconnect()
-                        device_info = device_info["info"]
-                        _LOGGER.debug("Connectivity test successful: Device Info: %s", device_info)
-                        hub_key = gen_hub_key(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
-                        # Use device_info as unique key so a Tesira device is only configured once.
-                        await self.async_set_unique_id(hub_key)
-                        self._abort_if_unique_id_configured()
-                    except Exception as e:
-                        _LOGGER.debug("Connectivity test succeeded but failed to get device info: %s", e)
-                        errors["base"] = "device_info_failed"
-                        await client.disconnect()
-                        return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
-                else:
-                    raise ConnectionError("Failed to establish connection")
-            except TesiraClient.InvalidCredentials as e:
-                _LOGGER.debug("Connectivity test failed: %s", e)
-                errors["base"] = "invalid_credentials"
-                return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
-            except TesiraClient.AuthenticationUnsupportedError as e:
-                _LOGGER.debug("Connectivity test failed: %s", e)
-                errors["base"] = "unsupported_authentication"
-                return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
-            except Exception as e:
-                _LOGGER.debug("Connectivity test failed: %s", e)
-                errors["base"] = "cannot_connect"
-                return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
+            devices = self._devices
 
-            title = f"Biamp - {device_info['deviceModel']} - {device_info['serialNumber']} - {host}:{port}"
-            return self.async_create_entry(title=title, data={CONF_IP: host, CONF_PORT: port, CONF_PROTO: proto, CONF_USER: user, CONF_PASS: pwrd, CONF_DEVICE_INFO: device_info})
+            device_info, error = await self._connectivity_test(form_data[CONF_HOST], form_data[CONF_PORT], form_data[CONF_PROTO], form_data[CONF_USER], pwrd)
+            if error:
+                return self.async_show_form(step_id="add_device", data_schema=_device_schema(form_data), errors={"base": error})
 
-        return self.async_show_form(step_id="user", data_schema=_device_schema(), errors=errors)
+            device_id = gen_device_id(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
+            device = gen_device_dict(form_data[CONF_HOST], form_data[CONF_PORT], form_data[CONF_PROTO], form_data[CONF_USER], pwrd, device_info)
+
+            if device_id in devices["items"]:
+                _LOGGER.debug("Device with ID %s already exists in config, skipping addition", device_id)
+                form_errors["base"] = "device_exists"
+                return self.async_show_form(step_id="add_device", data_schema=_device_schema(form_data), errors=form_errors)
+
+            if mode == MODE_INIT:
+                title: str = self.context.get(CONF_HUB_TITLE)
+                devices["items"][device_id] = device
+                devices["primary"] = device_id
+                _LOGGER.debug("Added new device: %s", _redact_device(device))
+                return self.async_create_entry(title=title, data={CONF_DEVICES: devices})
+            else:
+                entry = self.context['entry']
+                devices["items"][device_id] = device
+                _LOGGER.debug("Added new device: %s", _redact_device(device))
+                return self.async_update_reload_and_abort(entry, data={CONF_DEVICES: devices}, reason="device_added")
+
+        return self.async_show_form(step_id="add_device", data_schema=_device_schema(), errors=form_errors)
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        errors: dict[str, str] = {}
+        self.context['entry'] = self._get_reconfigure_entry()
+        return self.async_show_menu(
+            step_id="reconfigure",
+            menu_options=["edit_hub_title", "devices"],
+        )
 
-        entry = self._get_reconfigure_entry()
-        defaults = {
-            CONF_IP: entry.data.get(CONF_IP),
-            CONF_PORT: entry.data.get(CONF_PORT),
-            CONF_PROTO: entry.data.get(CONF_PROTO),
-            CONF_USER: entry.data.get(CONF_USER)
-        }
-        existing_device_info = entry.data.get(CONF_DEVICE_INFO)
+    async def async_step_devices(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        return self.async_show_menu(
+            step_id="devices",
+            menu_options=["add_device", "select_device", "remove_device", "change_primary"],
+        )
+
+    async def async_step_select_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        names = self._name_map()
+        if not names:
+            return self.async_abort(reason="no_devices")
+
+        if user_input is None:
+            schema = vol.Schema({vol.Required("select"): vol.In(list(names.keys()))})
+            return self.async_show_form(step_id="select_device", data_schema=schema, errors={})
+
+        edit_id = names[user_input["select"]]
+        self.context["edit_id"] = edit_id
+        defaults = self._devices["items"][edit_id]["connection_info"]
+        return self.async_show_form(step_id="edit_device", data_schema=_device_schema(defaults), errors={})
+
+    async def async_step_edit_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        form_errors: dict[str, str] = {}
+        form_data: dict[str, Any] = {}
+        entry = self.context.get("entry")
+        edit_id = self.context.get("edit_id")
+        if edit_id is None:
+            return self.async_abort(reason="unknown")
+        existing_device = self._devices["items"].get(edit_id)
+        defaults = existing_device["connection_info"] if existing_device else {}
 
         if user_input is not None:
-            host = user_input[CONF_IP]
-            port = user_input[CONF_PORT]
-            proto = user_input[CONF_PROTO]
-            user = user_input[CONF_USER]
+            form_data[CONF_HOST] = user_input[CONF_HOST]
+            form_data[CONF_PORT] = user_input[CONF_PORT]
+            form_data[CONF_PROTO] = user_input[CONF_PROTO]
+            form_data[CONF_USER] = user_input[CONF_USER]
             pwrd = user_input[CONF_PASS]
 
-            try:
-                client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
-                await client.connect()
-                if client._conn is not None:
-                    try:
-                        device_info = await client.device_info()
-                        await client.disconnect()
-                        device_info = device_info["info"]
-                        _LOGGER.debug("Connectivity test successful: Device Info: %s", device_info)
-                        if existing_device_info:
-                            if device_info["serialNumber"] != existing_device_info.get("serialNumber") or device_info["deviceModel"] != existing_device_info.get("deviceModel") or device_info["deviceRevision"] != existing_device_info.get("deviceRevision"):
-                                _LOGGER.warning("Device info has changed from %s to %s. This may indicate that the connection parameters now point to a different Tesira device.", existing_device_info, device_info)
-                                raise TesiraTTPException.NotPermitted("Device info has changed. This may indicate that the connection parameters now point to a different Tesira device.")
-                    except TesiraTTPException.NotPermitted as e:
-                        _LOGGER.debug("Connectivity test succeeded but device info has changed: %s", e)
-                        errors["base"] = "different_device"
-                        await client.disconnect()
-                        return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
-                    except Exception as e:
-                        _LOGGER.debug("Connectivity test succeeded but failed to get device info: %s", e)
-                        errors["base"] = "device_info_failed"
-                        await client.disconnect()
-                        return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
-                else:
-                    raise ConnectionError("Failed to establish connection")
-            except TesiraClient.InvalidCredentials as e:
-                _LOGGER.debug("Connectivity test failed: %s", e)
-                errors["base"] = "invalid_credentials"
-                return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
-            except TesiraClient.AuthenticationUnsupportedError as e:
-                _LOGGER.debug("Connectivity test failed: %s", e)
-                errors["base"] = "unsupported_authentication"
-                return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
-            except Exception as e:
-                _LOGGER.debug("Connectivity test failed: %s", e)
-                errors["base"] = "cannot_connect"
-                return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
+            devices = self._devices
 
-            return self.async_update_reload_and_abort(entry, data_updates=user_input)
+            device_info, error = await self._connectivity_test(form_data[CONF_HOST], form_data[CONF_PORT], form_data[CONF_PROTO], form_data[CONF_USER], pwrd)
+            if error:
+                return self.async_show_form(step_id="edit_device", data_schema=_device_schema(form_data), errors={"base": error})
 
-        return self.async_show_form(step_id="reconfigure", data_schema=_device_schema(defaults), errors=errors)
+            device_id = gen_device_id(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
+            device = gen_device_dict(form_data[CONF_HOST], form_data[CONF_PORT], form_data[CONF_PROTO], form_data[CONF_USER], pwrd, device_info)
+
+            if device_id != edit_id:
+                _LOGGER.error("Device ID mismatch: expected %s but got %s. This should never happen.", edit_id, device_id)
+                form_errors["base"] = "different_device"
+                return self.async_show_form(step_id="edit_device", data_schema=_device_schema(form_data), errors=form_errors)
+
+            if device_id not in devices["items"]:
+                _LOGGER.error("Device ID %s not found in existing config. This should never happen.", device_id)
+                form_errors["base"] = "device_not_found"
+                return self.async_show_form(step_id="edit_device", data_schema=_device_schema(form_data), errors=form_errors)
+
+            devices["items"][device_id] = device
+            _LOGGER.debug("Updated existing device: %s", _redact_device(device))
+            return self.async_update_reload_and_abort(entry, data={CONF_DEVICES: devices}, reason="device_updated")
+
+        return self.async_show_form(step_id="edit_device", data_schema=_device_schema(defaults), errors=form_errors)
+
+    async def async_step_remove_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        form_errors: dict[str, str] = {}
+        entry = self.context.get("entry")
+        names = self._name_map()
+        if not names:
+            return self.async_abort(reason="no_devices")
+
+        schema = vol.Schema({vol.Required("select"): vol.In(list(names.keys()))})
+
+        if user_input is None:
+            return self.async_show_form(step_id="remove_device", data_schema=schema, errors={})
+
+        remove_id = names[user_input["select"]]
+        devices = self._devices
+        if devices["primary"] == remove_id:
+            _LOGGER.error("Cannot remove primary device, please change primary device first.")
+            form_errors["base"] = "cannot_remove_primary"
+            return self.async_show_form(step_id="remove_device", data_schema=schema, errors=form_errors)
+
+        if remove_id not in devices["items"]:
+            _LOGGER.error("Device ID %s not found in existing config. This should never happen.", remove_id)
+            form_errors["base"] = "device_not_found"
+            return self.async_show_form(step_id="remove_device", data_schema=schema, errors=form_errors)
+
+        devices["items"].pop(remove_id)
+        _LOGGER.debug("Removed device with ID %s", remove_id)
+        return self.async_update_reload_and_abort(entry, data={CONF_DEVICES: devices}, reason="device_removed")
+
+    async def async_step_change_primary(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        form_errors: dict[str, str] = {}
+        entry = self.context.get("entry")
+        names = self._name_map()
+        if not names:
+            return self.async_abort(reason="no_devices")
+
+        schema = vol.Schema({vol.Required("select"): vol.In(list(names.keys()))})
+
+        if user_input is None:
+            return self.async_show_form(step_id="change_primary", data_schema=schema, errors={})
+
+        new_primary_device = names[user_input["select"]]
+        devices = self._devices
+        if devices["primary"] == new_primary_device:
+            _LOGGER.debug("Selected device is already primary, no changes made.")
+            form_errors["base"] = "already_primary"
+            return self.async_show_form(step_id="change_primary", data_schema=schema, errors=form_errors)
+        if new_primary_device not in devices["items"]:
+            _LOGGER.error("Device ID %s not found in existing config. This should never happen.", new_primary_device)
+            form_errors["base"] = "device_not_found"
+            return self.async_show_form(step_id="change_primary", data_schema=schema, errors=form_errors)
+
+        devices["primary"] = new_primary_device
+        _LOGGER.debug("Changed primary device to ID %s", new_primary_device)
+        return self.async_update_reload_and_abort(entry, data={CONF_DEVICES: devices}, reason="primary_changed")
+
+    async def async_step_edit_hub_title(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        form_errors: dict[str, str] = {}
+
+        entry = self.context['entry']
+        defaults = {
+            CONF_HUB_TITLE: entry.title
+        }
+
+        if user_input is not None:
+            title = user_input[CONF_HUB_TITLE]
+
+            return self.async_update_reload_and_abort(entry, title=title)
+
+        return self.async_show_form(step_id="edit_hub_title", data_schema=_hub(defaults), errors=form_errors)
 
     @staticmethod
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
@@ -235,19 +345,7 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         return self.async_show_menu(
             step_id="init",
-            menu_options=["devices", "entities"],
-        )
-
-    async def async_step_entities(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        return self.async_show_menu(
-            step_id="entities",
             menu_options=["add_entity", "select_entity", "remove_entity"],
-        )
-
-    async def async_step_devices(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        return self.async_show_menu(
-            step_id="devices",
-            menu_options=["add_device", "select_device", "remove_device"],
         )
 
     async def async_step_add_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
