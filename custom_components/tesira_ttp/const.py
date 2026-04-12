@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, April 7th 2026, 10:02:06 PM                                                                  #
+# Last Modified: Sunday, April 12th 2026, 10:05:47 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -29,46 +29,52 @@ from homeassistant.const import Platform
 DOMAIN = "tesira_ttp"
 PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR]
 
-CONF_HUB_TITLE = "hub_title"
-CONF_HOST = "host"
-CONF_PORT = "port"
-CONF_PROTO = "protocol"
-CONF_USER = "username"
-CONF_PASS = "password"
-CONF_DEVICE_INFO = "device_info"
+DICT_KEYS = {
+    "DATA_HUBS": "hubs",
+    "DATA_ENTRY_HUBKEY": "entry_hubkey",
+    "HUB_TITLE": "hub_title",
+    "HOST": "host",
+    "PORT": "port",
+    "PROTO": "protocol",
+    "USER": "username",
+    "PASS": "password",
+    "DEVICE_INFO": "device_info",
+    "CONTROLS": "controls",
+    "DEVICES": "devices",
+    "ENTITIES": "entities",
+    "CONTROL_NAME": "name",
+    "INSTANCE_TAG": "instance_tag",
+    "CHANNEL": "channel",
+    "MIN_DB": "min_db",
+    "MAX_DB": "max_db",
+    "STEP_DB": "step_db"
+}
 
-# Controls live in options as a list of dicts
-CONF_CONTROLS = "controls"
+CONFIG_MODES = {
+    "INIT": "init",
+    "RECONFIGURE": "reconfigure"
+}
 
-CONF_DEVICES = "devices"
-CONF_ENTITIES = "entities"
-
-CONF_CONTROL_NAME = "name"
-CONF_INSTANCE_TAG = "instance_tag"
-CONF_CHANNEL = "channel"
-CONF_MIN_DB = "min_db"
-CONF_MAX_DB = "max_db"
-CONF_STEP_DB = "step_db"
-
-DEFAULT_IP = "0.0.0.0"
-DEFAULT_PORT = 22
-DEFAULT_PROTO = "ssh"
-DEFAULT_USER = "default"
-DEFAULT_PASS = ""
-DEFAULT_CONTROL_NAME = "Tesira Volume"
-DEFAULT_CHANNEL = 1
-DEFAULT_MIN_DB = -100.0
-DEFAULT_MAX_DB = 12.0
-DEFAULT_STEP_DB = 0.5
 DEFAULT_DEVICES = {
     "items": {},
     "primary": None
 }
+
 DEFAULT_ENTITIES = {
-    "entity_type": {
-        "block_type": []
-    }
+    "block_type": []
 }
 
-MODE_INIT = "init"
-MODE_RECONFIGURE = "reconfigure"
+DEFAULTS = {
+    "HOST": "0.0.0.0",
+    "PORT": 22,
+    "PROTO": "ssh",
+    "USER": "default",
+    "PASS": "",
+    "CONTROL_NAME": "Tesira Volume",
+    "CHANNEL": 1,
+    "MIN_DB": -100.0,
+    "MAX_DB": 12.0,
+    "STEP_DB": 0.5,
+    "DEVICES": DEFAULT_DEVICES,
+    "ENTITIES": DEFAULT_ENTITIES
+}

@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, April 8th 2026, 10:06:46 PM                                                                #
+# Last Modified: Sunday, April 12th 2026, 10:09:23 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -31,24 +31,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.components.media_player import MediaPlayerEntity
 from homeassistant.components.media_player.const import MediaPlayerEntityFeature, MediaPlayerState
-from homeassistant.util import slugify
 
-from .const import (
-    DOMAIN,
-    CONF_CONTROLS,
-    CONF_CONTROL_NAME,
-    CONF_INSTANCE_TAG,
-    CONF_CHANNEL,
-    CONF_MIN_DB,
-    CONF_MAX_DB,
-    CONF_STEP_DB,
-    CONF_DEVICE_INFO,
-    DEFAULT_CONTROL_NAME,
-    DEFAULT_CHANNEL,
-    DEFAULT_MIN_DB,
-    DEFAULT_MAX_DB,
-    DEFAULT_STEP_DB,
-)
+from .const import DOMAIN, DICT_KEYS, DEFAULTS
 from .hub import TesiraHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,18 +55,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # port = entry.data[CONF_PORT]
     # device_info = entry.data[CONF_DEVICE_INFO]
     hubkey = entry.entry_id
-    hub: TesiraHub = hass.data[DOMAIN]["hubs"][hubkey]
+    hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["HUBS"]][hubkey]
 
-    controls: list[dict[str, Any]] = list(entry.options.get(CONF_CONTROLS, []))
+    controls: list[dict[str, Any]] = list(entry.options.get(DICT_KEYS["CONTROLS"], []))
 
     entities: list[TesiraVolumeMediaPlayer] = []
     for c in controls:
-        name = c.get(CONF_CONTROL_NAME, DEFAULT_CONTROL_NAME)
-        tag = c[CONF_INSTANCE_TAG]
-        ch = int(c.get(CONF_CHANNEL, DEFAULT_CHANNEL))
-        min_db = float(c.get(CONF_MIN_DB, DEFAULT_MIN_DB))
-        max_db = float(c.get(CONF_MAX_DB, DEFAULT_MAX_DB))
-        step_db = float(c.get(CONF_STEP_DB, DEFAULT_STEP_DB))
+        name = c.get(DICT_KEYS["CONTROL_NAME"], DEFAULTS["CONTROL_NAME"])
+        tag = c[DICT_KEYS["INSTANCE_TAG"]]
+        ch = int(c.get(DICT_KEYS["CHANNEL"], DEFAULTS["CHANNEL"]))
+        min_db = float(c.get(DICT_KEYS["MIN_DB"], DEFAULTS["MIN_DB"]))
+        max_db = float(c.get(DICT_KEYS["MAX_DB"], DEFAULTS["MAX_DB"]))
+        step_db = float(c.get(DICT_KEYS["STEP_DB"], DEFAULTS["STEP_DB"]))
         entities.append(TesiraVolumeMediaPlayer(hub, hubkey, name, tag, ch, min_db, max_db, step_db))
 
     async_add_entities(entities, update_before_add=True)

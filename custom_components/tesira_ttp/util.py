@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, April 7th 2026, 11:21:40 PM                                                                  #
+# Last Modified: Sunday, April 12th 2026, 10:05:27 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 from typing import Dict, Any
-from .const import DOMAIN, CONF_HOST, CONF_PORT, CONF_PROTO, CONF_USER, CONF_PASS
+from .const import DOMAIN, DICT_KEYS
 
 import base64
 import json
@@ -44,12 +44,12 @@ def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, devi
         device_id = gen_device_id(device_info["deviceModel"], device_info["deviceRevision"], device_info["serialNumber"])
     return {
         "connection_info": {
-            CONF_HOST: host,
-            CONF_PORT: port,
-            CONF_PROTO: proto,
+            DICT_KEYS["HOST"]: host,
+            DICT_KEYS["PORT"]: port,
+            DICT_KEYS["PROTO"]: proto,
             "auth": {
-                CONF_USER: user,
-                CONF_PASS: pwrd
+                DICT_KEYS["USER"]: user,
+                DICT_KEYS["PASS"]: pwrd
             }
         },
         "device_info": {
@@ -67,8 +67,8 @@ def _redact_device(device: dict[str, Any]) -> dict[str, Any]:
     redacted = copy.deepcopy(device)
     auth = redacted.get("connection_info", {}).get("auth")
     if auth:
-        auth[CONF_USER] = "***"
-        auth[CONF_PASS] = "***"
+        auth[DICT_KEYS["USER"]] = "***"
+        auth[DICT_KEYS["PASS"]] = "***"
     return redacted
 
 

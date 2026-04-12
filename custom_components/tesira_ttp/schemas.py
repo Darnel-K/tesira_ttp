@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Monday, April 6th 2026, 10:10:59 PM                                                                   #
+# Last Modified: Sunday, April 12th 2026, 10:09:23 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -31,31 +31,7 @@ import homeassistant.helpers.config_validation as cv
 
 from typing import Any
 from homeassistant.helpers.selector import selector
-from .const import (
-    DOMAIN,
-    CONF_HUB_TITLE,
-    CONF_HOST,
-    CONF_PORT,
-    CONF_PROTO,
-    CONF_USER,
-    CONF_PASS,
-    DEFAULT_IP,
-    DEFAULT_PORT,
-    DEFAULT_PROTO,
-    DEFAULT_USER,
-    DEFAULT_PASS,
-    CONF_CONTROL_NAME,
-    CONF_INSTANCE_TAG,
-    CONF_CHANNEL,
-    CONF_MIN_DB,
-    CONF_MAX_DB,
-    CONF_STEP_DB,
-    DEFAULT_CONTROL_NAME,
-    DEFAULT_CHANNEL,
-    DEFAULT_MIN_DB,
-    DEFAULT_MAX_DB,
-    DEFAULT_STEP_DB
-)
+from .const import DOMAIN, DICT_KEYS, DEFAULTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +39,7 @@ def _hub(defaults: dict[str, Any] | None = None) -> vol.Schema:
     d = defaults or {}
     return vol.Schema(
         {
-            vol.Required(CONF_HUB_TITLE, default=d.get(CONF_HUB_TITLE, "")): cv.string
+            vol.Required(DICT_KEYS["HUB_TITLE"], default=d.get(DICT_KEYS["HUB_TITLE"], "")): cv.string
         }
     )
 
@@ -71,9 +47,9 @@ def _device_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     d = defaults or {}
     return vol.Schema(
         {
-            vol.Required(CONF_HOST, default=d.get(CONF_HOST, DEFAULT_IP)): cv.string,
-            vol.Optional(CONF_PORT, default=d.get(CONF_PORT, DEFAULT_PORT)): cv.port,
-            vol.Required(CONF_PROTO, default=d.get(CONF_PROTO, DEFAULT_PROTO)): selector({
+            vol.Required(DICT_KEYS["HOST"], default=d.get(DICT_KEYS["HOST"], DEFAULTS["HOST"])): cv.string,
+            vol.Optional(DICT_KEYS["PORT"], default=d.get(DICT_KEYS["PORT"], DEFAULTS["PORT"])): cv.port,
+            vol.Required(DICT_KEYS["PROTO"], default=d.get(DICT_KEYS["PROTO"], DEFAULTS["PROTO"])): selector({
                 "select": {
                     "options": [
                         {"value": "ssh", "label": "SSH"},
@@ -81,8 +57,8 @@ def _device_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     ]
                 }
             }),
-            vol.Optional(CONF_USER, default=d.get(CONF_USER, DEFAULT_USER)): cv.string,
-            vol.Optional(CONF_PASS, default=d.get(CONF_PASS, DEFAULT_PASS)): cv.string
+            vol.Optional(DICT_KEYS["USER"], default=d.get(DICT_KEYS["USER"], DEFAULTS["USER"])): cv.string,
+            vol.Optional(DICT_KEYS["PASS"], default=d.get(DICT_KEYS["PASS"], DEFAULTS["PASS"])): cv.string
         }
     )
 
@@ -90,11 +66,11 @@ def _control_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     d = defaults or {}
     return vol.Schema(
         {
-            vol.Optional(CONF_CONTROL_NAME, default=d.get(CONF_CONTROL_NAME, DEFAULT_CONTROL_NAME)): cv.string,
-            vol.Required(CONF_INSTANCE_TAG, default=d.get(CONF_INSTANCE_TAG, "volume")): cv.string,
-            vol.Optional(CONF_CHANNEL, default=int(d.get(CONF_CHANNEL, DEFAULT_CHANNEL))): vol.Coerce(int),
-            vol.Optional(CONF_MIN_DB, default=float(d.get(CONF_MIN_DB, DEFAULT_MIN_DB))): vol.Coerce(float),
-            vol.Optional(CONF_MAX_DB, default=float(d.get(CONF_MAX_DB, DEFAULT_MAX_DB))): vol.Coerce(float),
-            vol.Optional(CONF_STEP_DB, default=float(d.get(CONF_STEP_DB, DEFAULT_STEP_DB))): vol.Coerce(float),
+            vol.Optional(DICT_KEYS["CONTROL_NAME"], default=d.get(DICT_KEYS["CONTROL_NAME"], DEFAULTS["CONTROL_NAME"])): cv.string,
+            vol.Required(DICT_KEYS["INSTANCE_TAG"], default=d.get(DICT_KEYS["INSTANCE_TAG"], "volume")): cv.string,
+            vol.Optional(DICT_KEYS["CHANNEL"], default=int(d.get(DICT_KEYS["CHANNEL"], DEFAULTS["CHANNEL"]))): vol.Coerce(int),
+            vol.Optional(DICT_KEYS["MIN_DB"], default=float(d.get(DICT_KEYS["MIN_DB"], DEFAULTS["MIN_DB"]))): vol.Coerce(float),
+            vol.Optional(DICT_KEYS["MAX_DB"], default=float(d.get(DICT_KEYS["MAX_DB"], DEFAULTS["MAX_DB"]))): vol.Coerce(float),
+            vol.Optional(DICT_KEYS["STEP_DB"], default=float(d.get(DICT_KEYS["STEP_DB"], DEFAULTS["STEP_DB"]))): vol.Coerce(float),
         }
     )

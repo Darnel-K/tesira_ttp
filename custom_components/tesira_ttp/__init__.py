@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, April 7th 2026, 11:21:40 PM                                                                  #
+# Last Modified: Sunday, April 12th 2026, 10:09:23 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -32,19 +32,17 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN, PLATFORMS, CONF_HOST, CONF_PORT, CONF_PROTO, CONF_USER, CONF_PASS, CONF_DEVICES, DEFAULT_DEVICES
+from .const import DOMAIN, PLATFORMS, DICT_KEYS, DEFAULTS
 from .hub import TesiraHub
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_HUBS = "hubs"
-DATA_ENTRY_HUBKEY = "entry_hubkey"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault(DATA_HUBS, {})
-    hass.data[DOMAIN].setdefault(DATA_ENTRY_HUBKEY, {})
+    hass.data[DOMAIN].setdefault(DICT_KEYS["DATA_HUBS"], {})
+    hass.data[DOMAIN].setdefault(DICT_KEYS["DATA_ENTRY_HUBKEY"], {})
     return True
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -52,7 +50,7 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    devices = copy.deepcopy(entry.data.get(CONF_DEVICES, DEFAULT_DEVICES))
+    devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
     primary_device_id = devices.get("primary")
     if not primary_device_id or primary_device_id not in devices["items"]:
         _LOGGER.error("Invalid or missing primary device in config entry %s", entry.entry_id)
@@ -60,13 +58,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     primary_device = devices["items"][primary_device_id]
     conn_info = primary_device["connection_info"]
     auth_credentials = conn_info.get("auth", {})
-    host = conn_info.get(CONF_HOST)
-    port = conn_info.get(CONF_PORT)
-    proto = conn_info.get(CONF_PROTO)
-    user = auth_credentials.get(CONF_USER)
-    pwrd = auth_credentials.get(CONF_PASS)
+    host = conn_info.get(DICT_KEYS["HOST"])
+    port = conn_info.get(DICT_KEYS["PORT"])
+    proto = conn_info.get(DICT_KEYS["PROTO"])
+    user = auth_credentials.get(DICT_KEYS["USER"])
+    pwrd = auth_credentials.get(DICT_KEYS["PASS"])
 
-    hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
+    hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]]
     hubkey = entry.entry_id
     hub = hubs.get(hubkey)
     if hub is None:
@@ -74,7 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hubs[hubkey] = hub
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 
-    hass.data[DOMAIN][DATA_ENTRY_HUBKEY][entry.entry_id] = hubkey
+    hass.data[DOMAIN][DICT_KEYS["DATA_ENTRY_HUBKEY"]][entry.entry_id] = hubkey
 
     device_registry = dr.async_get(hass)
     for device_id, device in devices["items"].items():
@@ -89,11 +87,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    hubkey = hass.data[DOMAIN][DATA_ENTRY_HUBKEY].pop(entry.entry_id, None)
+    hubkey = hass.data[DOMAIN][DICT_KEYS["DATA_ENTRY_HUBKEY"]].pop(entry.entry_id, None)
     if hubkey:
-        hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
+        hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]]
         # If no other entries reference this hubkey, close it.
-        if hubkey not in hass.data[DOMAIN][DATA_ENTRY_HUBKEY].values():
+        if hubkey not in hass.data[DOMAIN][DICT_KEYS["DATA_ENTRY_HUBKEY"]].values():
             hub = hubs.pop(hubkey, None)
             if hub:
                 await hub.disconnect()
