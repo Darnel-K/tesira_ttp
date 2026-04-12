@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Monday, March 30th 2026, 3:26:17 PM                                                                   #
+# Last Modified: Monday, April 13th 2026, 12:11:16 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -121,26 +121,30 @@ class TesiraClient:
             self.buffer = ""
             self.complete = asyncio.Event()
 
+            # NEW: framing state
+            self.ok_seen = False
+            self._last_rx = asyncio.get_event_loop().time()
+
         def data_received(self, data, datatype=None):
             if not data:
                 return
 
             self.buffer += data
+            self._last_rx = asyncio.get_event_loop().time()
+
             _LOGGER.debug("[RX/TELNET] %s", repr(data))
 
-            # Detect +OK or -ERR
-            if "+OK" in self.buffer or "-ERR" in self.buffer:
+            if "+OK" in data or "-ERR" in data:
+                self.ok_seen = True
                 self.complete.set()
 
-            # Publish-token events
-            for line in self.buffer.splitlines():
+            for line in data.splitlines():
                 if line.strip().startswith("! "):
                     self.parent._handle_publish_event(line.strip())
 
         def connection_lost(self, exc):
             _LOGGER.warning("[TELNET] Connection lost.")
             self.complete.set()
-
 
     # =====================================================================
     # INTERNAL SSH SESSION
@@ -152,14 +156,25 @@ class TesiraClient:
             self.buffer = ""
             self.complete = asyncio.Event()
 
+            # NEW: framing state
+            self.ok_seen = False
+            self._last_rx = asyncio.get_event_loop().time()
+
         def data_received(self, data, datatype):
+            if not data:
+                return
+
             self.buffer += data
+            self._last_rx = asyncio.get_event_loop().time()
 
             _LOGGER.debug("[RX/SSH] %s", repr(data))
 
-            if "+OK" in self.buffer or "-ERR" in self.buffer:
+            # Detect status prefix, but DO NOT signal completion yet
+            if "+OK" in data or "-ERR" in data:
+                self.ok_seen = True
                 self.complete.set()
 
+            # Publish-token events
             for line in data.splitlines():
                 if line.strip().startswith("! "):
                     self.parent._handle_publish_event(line.strip())
@@ -167,7 +182,6 @@ class TesiraClient:
         def connection_lost(self, exc):
             _LOGGER.warning("[SSH] Connection lost")
             self.complete.set()
-
 
     # =====================================================================
     # TELNET READER TASK
@@ -303,30 +317,54 @@ class TesiraClient:
     # =====================================================================
     # COMMAND ENGINE (SSH + TELNET, fragmentation safe)
     # =====================================================================
-    async def command(self, cmd: str, timeout=5.0):
+    async def command(self, cmd: str, timeout: float = 5.0):
         async with self._lock:
             await self.connect()
 
-            # reset
+            # Reset session state
             self._session.buffer = ""
             self._session.complete.clear()
+            self._session.ok_seen = False
+            self._session._last_rx = asyncio.get_event_loop().time()
 
             _LOGGER.debug("[TX] %s", cmd)
 
             await self._send(cmd + "\r\n")
 
+            # Wait until we see the response start (+OK or -ERR)
             try:
                 await asyncio.wait_for(self._session.complete.wait(), timeout)
             except asyncio.TimeoutError:
-                raise self.TimeoutError("Timeout waiting for +OK or -ERR", raw=self._session.buffer, cmd=cmd)
+                raise self.TimeoutError(
+                    "Timeout waiting for +OK or -ERR",
+                    raw=self._session.buffer,
+                    cmd=cmd,
+                )
+
+            # --- NEW: idle-grace tail wait for large payloads ---
+            IDLE_GRACE = 0.15  # seconds; safe for multi‑kb responses
+
+            while True:
+                await asyncio.sleep(IDLE_GRACE)
+                now = asyncio.get_event_loop().time()
+                if now - self._session._last_rx >= IDLE_GRACE:
+                    break
+            # ---------------------------------------------------
 
             raw = self._session.buffer.strip()
             lines = [l.strip() for l in raw.splitlines()]
 
-            final = next((l for l in lines if l.startswith("+OK") or l.startswith("-ERR")), None)
+            final = next(
+                (l for l in lines if l.startswith("+OK") or l.startswith("-ERR")),
+                None,
+            )
 
             if not final:
-                raise self.CommandError("No +OK/-ERR returned", raw=raw, cmd=cmd)
+                raise self.CommandError(
+                    "No +OK/-ERR returned",
+                    raw=raw,
+                    cmd=cmd,
+                )
 
             if final.startswith("-ERR"):
                 if self.safe_mode:
@@ -334,7 +372,6 @@ class TesiraClient:
                 raise self.CommandError(final, raw=raw, cmd=cmd)
 
             return final
-
 
     # =====================================================================
     # JSON PARSER
@@ -354,11 +391,22 @@ class TesiraClient:
 
         payload = re.sub(r"\[([^\[\]]+)\]", fix_array, payload)
 
-        # Insert commas
+        # Insert commas between values and the next quoted key
+        payload = re.sub(r'([A-Za-z0-9_"\}\]])\s+"', r'\1, "', payload)
+
+        # Insert commas between quoted fields
         payload = re.sub(r'"\s+"', '", "', payload)
 
+        # Wrap in object if required
         if not payload.startswith("{"):
             payload = "{" + payload + "}"
+
+        # Quote unquoted enum literals
+        payload = re.sub(
+            r':([A-Z_][A-Z0-9_]*)\b(?!")',
+            r':"\1"',
+            payload
+        )
 
         try:
             return json.loads(payload)
