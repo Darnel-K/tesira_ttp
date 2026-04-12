@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 12th 2026, 10:09:23 PM                                                                  #
+# Last Modified: Sunday, April 12th 2026, 11:14:39 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -55,7 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # port = entry.data[CONF_PORT]
     # device_info = entry.data[CONF_DEVICE_INFO]
     hubkey = entry.entry_id
-    hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["HUBS"]][hubkey]
+    hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
 
     controls: list[dict[str, Any]] = list(entry.options.get(DICT_KEYS["CONTROLS"], []))
 

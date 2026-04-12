@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 12th 2026, 10:09:23 PM                                                                  #
+# Created Date: Saturday, April 4th 2026, 5:22:28 PM                                                                   #
+# Last Modified: Sunday, April 12th 2026, 11:23:04 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -50,11 +50,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     for device_id, device in devices["items"].items():
         hub_entities.append(TesiraNetConnBinarySensor(hub, device_id, device))
 
-    async_add_entities(hub_entities)
+    async_add_entities(hub_entities, update_before_add=True)
 
 class TesiraNetConnBinarySensor(BinarySensorEntity):
     """Binary sensor for Tesira connection status."""
 
+    _attr_has_entity_name = True
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_should_poll = True
 
@@ -67,6 +68,7 @@ class TesiraNetConnBinarySensor(BinarySensorEntity):
         self._attr_name = f"Network Connection Status (SN:{self._device_info.get('serial_number')})"
         self._attr_unique_id = f"tesira_ttp_{self._device_info.get('serial_number')}_netconnstate".lower()
         self._attr_is_on = False
+        self._attr_available = True
 
     @property
     def is_on(self) -> bool | None:
@@ -98,6 +100,7 @@ class TesiraNetConnBinarySensor(BinarySensorEntity):
 class TesiraHubConnBinarySensor(BinarySensorEntity):
     """Binary sensor for Tesira hub connection status."""
 
+    _attr_has_entity_name = True
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_should_poll = True
 
@@ -107,6 +110,7 @@ class TesiraHubConnBinarySensor(BinarySensorEntity):
         self._attr_name = f"Hub Connection Status ({self._hubkey})"
         self._attr_unique_id = f"tesira_ttp_{self._hubkey}_hubconnstate".lower()
         self._attr_is_on = False
+        self._attr_available = True
 
     @property
     def is_on(self) -> bool | None:
