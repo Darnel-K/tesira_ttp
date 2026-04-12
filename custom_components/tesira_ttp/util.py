@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Sunday, March 22nd 2026, 10:04:37 PM                                                                   #
-# Last Modified: Thursday, March 26th 2026, 12:25:23 AM                                                                #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Sunday, April 12th 2026, 10:05:27 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -26,45 +26,110 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Dict, Any
+from .const import DOMAIN, DICT_KEYS
 
-import voluptuous as vol
+import base64
+import json
+import copy
 
-# =====================================================================
-# Schema Helpers
-# =====================================================================
-def schema_with_defaults(
-    base_schema: vol.Schema, defaults: Dict[str, Any]
-) -> vol.Schema:
+def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, device_info: dict, device_id: str = None) -> Dict[str, Any]:
     """
-    Create a new voluptuous Schema with runtime default values injected.
-
-    This **does not** modify the passed-in base schema.
-
-    Args:
-        base_schema: The original schema to copy fields from.
-        defaults: A dictionary mapping field names -> default values.
+    Generate a dictionary template for a Tesira device.
 
     Returns:
-        A new vol.Schema instance where matching fields are replaced with
-        new Required/Optional fields containing default values.
+        A dictionary with the structure for storing device information and connection details.
     """
-    new_fields: Dict[Any, Any] = {}
+    if device_id is None:
+        device_id = gen_device_id(device_info["deviceModel"], device_info["deviceRevision"], device_info["serialNumber"])
+    return {
+        "connection_info": {
+            DICT_KEYS["HOST"]: host,
+            DICT_KEYS["PORT"]: port,
+            DICT_KEYS["PROTO"]: proto,
+            "auth": {
+                DICT_KEYS["USER"]: user,
+                DICT_KEYS["PASS"]: pwrd
+            }
+        },
+        "device_info": {
+            "name": f"Biamp - {device_info['deviceModel']} - {device_info['serialNumber']} - {host}:{port}",
+            "manufacturer": "Biamp",
+            "model": device_info["deviceModel"],
+            "model_id": device_info["deviceModel"],
+            "sw_version": device_info["firmwareVersion"],
+            "hw_version": device_info["deviceRevision"],
+            "serial_number": device_info["serialNumber"]
+        }
+    }
 
-    # base_schema.schema contains {vol.Required/vol.Optional: validator}
-    for key, validator in base_schema.schema.items():
-        field_name = key.schema  # the raw field name string
+def _redact_device(device: dict[str, Any]) -> dict[str, Any]:
+    redacted = copy.deepcopy(device)
+    auth = redacted.get("connection_info", {}).get("auth")
+    if auth:
+        auth[DICT_KEYS["USER"]] = "***"
+        auth[DICT_KEYS["PASS"]] = "***"
+    return redacted
 
-        if field_name in defaults:
-            default_value = defaults[field_name]
 
-            # Replace field with one that has a default applied
-            if isinstance(key, vol.Required):
-                new_fields[vol.Required(field_name, default=default_value)] = validator
-            else:
-                new_fields[vol.Optional(field_name, default=default_value)] = validator
-        else:
-            # Leave untouched
-            new_fields[key] = validator
+def gen_device_id(deviceModel: str, deviceRevision: int, serialNumber: str, format: str = "b64") -> str:
+    """
+    Generate a unique key for a Tesira device based on its properties.
 
-    return vol.Schema(new_fields)
+    Args:
+
+        deviceModel: The model of the device.
+        deviceRevision: The revision of the device.
+        serialNumber: The serial number of the device.
+        format: The output format of the key ("b64" for base64, "plain" for raw string, "json" for JSON).
+
+    Returns:
+        A unique string key representing the device configuration.
+    """
+    ALLOWED_FORMATS = {"b64", "plain", "json"}
+    device_id = {"deviceModel": deviceModel.lower(), "deviceRevision": deviceRevision.lower(), "serialNumber": serialNumber.lower()}
+    format = format.lower().strip()
+    if format not in ALLOWED_FORMATS:
+            raise ValueError(f"Unsupported format '{format}'. Allowed: {ALLOWED_FORMATS}")
+
+    match format:
+        case "json":
+             return json.dumps(device_id, sort_keys=True)
+        case "plain":
+             return f"{device_id['deviceModel']}:{device_id['deviceRevision']}:{device_id['serialNumber']}"
+        case "b64":
+             return base64.urlsafe_b64encode(json.dumps(device_id, sort_keys=True).encode()).decode()
+
+def parse_device_id(device_id: str, format: str = "b64") -> Dict[str, str]:
+    """
+    Parse a device ID back into its components.
+
+    Args:
+        device_id: The unique ID representing the device configuration.
+        format: The format of the input ID ("b64" for base64, "plain" for raw string, "json" for JSON).
+
+    Returns:
+        A dictionary containing the original parameters (deviceModel, deviceRevision, serialNumber).
+    """
+    ALLOWED_FORMATS = {"b64", "plain", "json"}
+    format = format.lower().strip()
+    if format not in ALLOWED_FORMATS:
+            raise ValueError(f"Unsupported format '{format}'. Allowed: {ALLOWED_FORMATS}")
+
+    match format:
+        case "json":
+             return json.loads(device_id)
+        case "plain":
+             parts = device_id.split(":")
+             if len(parts) != 3:
+                 raise ValueError("Invalid plain format. Expected 'deviceModel:deviceRevision:serialNumber'")
+             return {"deviceModel": parts[0], "deviceRevision": parts[1], "serialNumber": parts[2]}
+        case "b64":
+             decoded = base64.urlsafe_b64decode(device_id.encode()).decode()
+             return json.loads(decoded)
+
+class TesiraTTPException(Exception):
+    """Base exception for tesira_ttp."""
+    class NotPermitted(Exception):
+        """Raised when an action is not permitted by the integration."""
+        pass

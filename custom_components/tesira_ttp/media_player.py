@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Thursday, March 26th 2026, 11:30:26 PM                                                                #
+# Last Modified: Sunday, April 12th 2026, 11:14:39 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -31,26 +31,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.components.media_player import MediaPlayerEntity
 from homeassistant.components.media_player.const import MediaPlayerEntityFeature, MediaPlayerState
-from homeassistant.util import slugify
 
-from .const import (
-    DOMAIN,
-    CONF_CONTROLS,
-    CONF_CONTROL_NAME,
-    CONF_INSTANCE_TAG,
-    CONF_CHANNEL,
-    CONF_MIN_DB,
-    CONF_MAX_DB,
-    CONF_STEP_DB,
-    CONF_IP,
-    CONF_PORT,
-    CONF_PROTO,
-    DEFAULT_CONTROL_NAME,
-    DEFAULT_CHANNEL,
-    DEFAULT_MIN_DB,
-    DEFAULT_MAX_DB,
-    DEFAULT_STEP_DB,
-)
+from .const import DOMAIN, DICT_KEYS, DEFAULTS
 from .hub import TesiraHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -69,23 +51,23 @@ def level01_to_db(level01: float, min_db: float, max_db: float) -> float:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     # Find shared hub by host:port
-    host = entry.data[CONF_IP]
-    port = entry.data[CONF_PORT]
-    proto = entry.data[CONF_PROTO]
-    hubkey = f"{host}:{port}:{proto}"
-    hub: TesiraHub = hass.data[DOMAIN]["hubs"][hubkey]
+    # host = entry.data[CONF_HOST]
+    # port = entry.data[CONF_PORT]
+    # device_info = entry.data[CONF_DEVICE_INFO]
+    hubkey = entry.entry_id
+    hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
 
-    controls: list[dict[str, Any]] = list(entry.options.get(CONF_CONTROLS, []))
+    controls: list[dict[str, Any]] = list(entry.options.get(DICT_KEYS["CONTROLS"], []))
 
     entities: list[TesiraVolumeMediaPlayer] = []
     for c in controls:
-        name = c.get(CONF_CONTROL_NAME, DEFAULT_CONTROL_NAME)
-        tag = c[CONF_INSTANCE_TAG]
-        ch = int(c.get(CONF_CHANNEL, DEFAULT_CHANNEL))
-        min_db = float(c.get(CONF_MIN_DB, DEFAULT_MIN_DB))
-        max_db = float(c.get(CONF_MAX_DB, DEFAULT_MAX_DB))
-        step_db = float(c.get(CONF_STEP_DB, DEFAULT_STEP_DB))
-        entities.append(TesiraVolumeMediaPlayer(hub, host, port, name, tag, ch, min_db, max_db, step_db))
+        name = c.get(DICT_KEYS["CONTROL_NAME"], DEFAULTS["CONTROL_NAME"])
+        tag = c[DICT_KEYS["INSTANCE_TAG"]]
+        ch = int(c.get(DICT_KEYS["CHANNEL"], DEFAULTS["CHANNEL"]))
+        min_db = float(c.get(DICT_KEYS["MIN_DB"], DEFAULTS["MIN_DB"]))
+        max_db = float(c.get(DICT_KEYS["MAX_DB"], DEFAULTS["MAX_DB"]))
+        step_db = float(c.get(DICT_KEYS["STEP_DB"], DEFAULTS["STEP_DB"]))
+        entities.append(TesiraVolumeMediaPlayer(hub, hubkey, name, tag, ch, min_db, max_db, step_db))
 
     async_add_entities(entities, update_before_add=True)
 
@@ -95,8 +77,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
     def __init__(
         self,
         hub: TesiraHub,
-        host: str,
-        port: int,
+        hubkey: str,
         name: str,
         instance_tag: str,
         channel: int,
@@ -105,8 +86,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
         step_db: float,
     ) -> None:
         self._hub = hub
-        self._host = host
-        self._port = port
+        self._hubkey = hubkey
         self._tag = instance_tag
         self._ch = channel
         self._min_db = min_db
@@ -114,7 +94,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
         self._step_db = step_db
 
         self._attr_name = name
-        self._attr_unique_id = f"tesira_ttp_{host}_{port}_{self._tag}_{self._ch}".lower()
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey}_{self._tag}_{self._ch}".lower()
 
         self._attr_supported_features = (
             MediaPlayerEntityFeature.VOLUME_SET
@@ -159,7 +139,7 @@ class TesiraVolumeMediaPlayer(MediaPlayerEntity):
                 pass
 
         except Exception as e:
-            _LOGGER.debug("Update failed for %s/%s ch %s: %s", self._host, self._tag, self._ch, e)
+            _LOGGER.debug("Update failed for %s/%s ch %s: %s", self._hubkey, self._tag, self._ch, e)
             self._attr_available = False
             self._attr_state = MediaPlayerState.UNAVAILABLE
 

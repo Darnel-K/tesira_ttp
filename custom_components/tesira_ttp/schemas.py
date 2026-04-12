@@ -1,8 +1,8 @@
 # #################################################################################################################### #
-# Filename: \custom_components\tesira_ttp\const.py                                                                     #
+# Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 12th 2026, 10:05:47 PM                                                                  #
+# Last Modified: Sunday, April 12th 2026, 10:09:23 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -22,59 +22,55 @@
 # You should have received a copy of the GNU Affero General Public License                                             #
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
 # #################################################################################################################### #
+
 from __future__ import annotations
 
-from homeassistant.const import Platform
+import logging
+import voluptuous as vol
+import homeassistant.helpers.config_validation as cv
 
-DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR]
+from typing import Any
+from homeassistant.helpers.selector import selector
+from .const import DOMAIN, DICT_KEYS, DEFAULTS
 
-DICT_KEYS = {
-    "DATA_HUBS": "hubs",
-    "DATA_ENTRY_HUBKEY": "entry_hubkey",
-    "HUB_TITLE": "hub_title",
-    "HOST": "host",
-    "PORT": "port",
-    "PROTO": "protocol",
-    "USER": "username",
-    "PASS": "password",
-    "DEVICE_INFO": "device_info",
-    "CONTROLS": "controls",
-    "DEVICES": "devices",
-    "ENTITIES": "entities",
-    "CONTROL_NAME": "name",
-    "INSTANCE_TAG": "instance_tag",
-    "CHANNEL": "channel",
-    "MIN_DB": "min_db",
-    "MAX_DB": "max_db",
-    "STEP_DB": "step_db"
-}
+_LOGGER = logging.getLogger(__name__)
 
-CONFIG_MODES = {
-    "INIT": "init",
-    "RECONFIGURE": "reconfigure"
-}
+def _hub(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(DICT_KEYS["HUB_TITLE"], default=d.get(DICT_KEYS["HUB_TITLE"], "")): cv.string
+        }
+    )
 
-DEFAULT_DEVICES = {
-    "items": {},
-    "primary": None
-}
+def _device_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(DICT_KEYS["HOST"], default=d.get(DICT_KEYS["HOST"], DEFAULTS["HOST"])): cv.string,
+            vol.Optional(DICT_KEYS["PORT"], default=d.get(DICT_KEYS["PORT"], DEFAULTS["PORT"])): cv.port,
+            vol.Required(DICT_KEYS["PROTO"], default=d.get(DICT_KEYS["PROTO"], DEFAULTS["PROTO"])): selector({
+                "select": {
+                    "options": [
+                        {"value": "ssh", "label": "SSH"},
+                        {"value": "telnet", "label": "Telnet"}
+                    ]
+                }
+            }),
+            vol.Optional(DICT_KEYS["USER"], default=d.get(DICT_KEYS["USER"], DEFAULTS["USER"])): cv.string,
+            vol.Optional(DICT_KEYS["PASS"], default=d.get(DICT_KEYS["PASS"], DEFAULTS["PASS"])): cv.string
+        }
+    )
 
-DEFAULT_ENTITIES = {
-    "block_type": []
-}
-
-DEFAULTS = {
-    "HOST": "0.0.0.0",
-    "PORT": 22,
-    "PROTO": "ssh",
-    "USER": "default",
-    "PASS": "",
-    "CONTROL_NAME": "Tesira Volume",
-    "CHANNEL": 1,
-    "MIN_DB": -100.0,
-    "MAX_DB": 12.0,
-    "STEP_DB": 0.5,
-    "DEVICES": DEFAULT_DEVICES,
-    "ENTITIES": DEFAULT_ENTITIES
-}
+def _control_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Optional(DICT_KEYS["CONTROL_NAME"], default=d.get(DICT_KEYS["CONTROL_NAME"], DEFAULTS["CONTROL_NAME"])): cv.string,
+            vol.Required(DICT_KEYS["INSTANCE_TAG"], default=d.get(DICT_KEYS["INSTANCE_TAG"], "volume")): cv.string,
+            vol.Optional(DICT_KEYS["CHANNEL"], default=int(d.get(DICT_KEYS["CHANNEL"], DEFAULTS["CHANNEL"]))): vol.Coerce(int),
+            vol.Optional(DICT_KEYS["MIN_DB"], default=float(d.get(DICT_KEYS["MIN_DB"], DEFAULTS["MIN_DB"]))): vol.Coerce(float),
+            vol.Optional(DICT_KEYS["MAX_DB"], default=float(d.get(DICT_KEYS["MAX_DB"], DEFAULTS["MAX_DB"]))): vol.Coerce(float),
+            vol.Optional(DICT_KEYS["STEP_DB"], default=float(d.get(DICT_KEYS["STEP_DB"], DEFAULTS["STEP_DB"]))): vol.Coerce(float),
+        }
+    )
