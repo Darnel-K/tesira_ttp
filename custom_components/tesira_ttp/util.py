@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 12:30:57 AM                                                               #
+# Last Modified: Wednesday, April 15th 2026, 11:18:43 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,11 +27,66 @@
 from __future__ import annotations
 
 from typing import Dict, Any
-from .const import DOMAIN, DICT_KEYS
+from .const import DOMAIN, DICT_KEYS, DEFAULTS, BLOCK_SCHEMA_DATA
 
 import base64
 import json
 import copy
+
+def _devices(entry: dict[Any, Any]) -> dict[str, Any]:
+    """Return a copy of the devices dict from the config entry data, or defaults if not available"""
+    if entry is None:
+        return copy.deepcopy(DEFAULTS["DEVICES"])
+
+    return copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
+
+def _entities(entry: dict[Any, Any]) -> list[dict[str, Any]]:
+    """Return a copy of the entities list from the config entry options, or defaults if not available"""
+    if entry is None:
+        return copy.deepcopy(DEFAULTS["ENTITIES"])
+
+    return copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
+
+def _device_name_map(devices: dict[Any, Any]) -> dict[str, str]:
+    """Return a mapping of human-readable device names to device IDs."""
+
+    items = devices.get("items", {})
+    name_map: dict[str, str] = {}
+    seen_names: set[str] = set()
+
+    # Map display names to IDs, adding a suffix when names collide.
+    for device_id, device in items.items():
+        info = device.get("device_info", {})
+        base_name = info.get("name", "Unknown Device")
+        serial = info.get("serial_number")
+
+        name = base_name
+
+        # Ensure uniqueness of displayed names
+        if name in seen_names:
+            suffix = serial or device_id[:8]
+            name = f"{base_name} ({suffix})"
+
+        seen_names.add(name)
+        name_map[name] = device_id
+
+    return dict(sorted(name_map.items()))
+
+def _entity_name_map(entities: list[dict[str, Any]]) -> dict[str, str]:
+    """Return a mapping of human-readable entity names to themselves, for use with cv.multi_select."""
+
+    names: dict[str, str] = {}
+
+    # Map display names to themselves, adding a suffix when names collide.
+    for i, entity in enumerate(entities):
+        name = f"{entity.get('block_type', 'Unknown Block')} - {entity.get('instance_tag', '')}"
+
+        if name in names:
+            name = f"{name} ({i})"
+
+        names[name] = name
+
+    return names
 
 def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, device_info: dict, device_id: str = None) -> Dict[str, Any]:
     """
@@ -62,6 +117,32 @@ def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, devi
             "serial_number": device_info["serialNumber"]
         }
     }
+
+def gen_entity_dict(block_type: str, form_data: dict[str, Any], device_names: dict[str, str]) -> dict[str, Any]:
+    """
+    Generate a dictionary template for an entity based on its block type and identifying fields.
+
+    Args:
+        block_type: The type of the Tesira block (e.g., "level", "switch").
+        form_data: A dictionary of field names and their values that identify the entity.
+
+    Returns:
+        A dictionary with the structure for storing entity information and metadata.
+    """
+    entity = {
+        "block_type": block_type,
+        "supported_entity_types": BLOCK_SCHEMA_DATA[block_type].get("supported_entity_types", [])
+    }
+    fields = BLOCK_SCHEMA_DATA[block_type]["fields"]
+
+    for field in fields:
+        # Copy each configured field from the submitted form.
+        entity[field] = form_data.get(field)
+        if field == "device" and form_data.get(field) != "None":
+            # Persist selected devices by ID instead of display name.
+            entity[field] = device_names.get(form_data.get(field))
+
+    return entity
 
 def _redact_device(device: dict[str, Any]) -> dict[str, Any]:
     # Return a copy so logging/debug views never mutate stored config data.

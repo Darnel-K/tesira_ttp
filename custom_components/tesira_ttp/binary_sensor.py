@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 9:23:26 PM                                                                #
+# Created Date: Monday, April 13th 2026, 12:33:01 AM                                                                   #
+# Last Modified: Wednesday, April 15th 2026, 11:23:05 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -33,6 +33,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, DICT_KEYS, DEFAULTS
 from .hub import TesiraHub
@@ -47,10 +48,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entities_list = []
 
     # Placeholder for future block-driven binary sensors from options entities.
-    for block_type, item_list in entities.items():
-        for item in item_list:
-            if "binary_sensor" in item["supported_entity_types"]:
-                 pass
+    # for block_type, item_list in entities.items():
+    #     for item in item_list:
+    #         if "binary_sensor" in item["supported_entity_types"]:
+    #              pass
 
 
     entities_list.append(TesiraHubConnBinarySensor(hub, hubkey))
@@ -58,7 +59,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     for device_id, device in devices["items"].items():
         entities_list.append(TesiraNetConnBinarySensor(hub, device_id, device))
 
+
+    # Remove stale binary_sensor entities no longer present in the current config.
+    entity_registry = er.async_get(hass)
+    expected_ids = {e.unique_id for e in entities_list}
+    for entity_entry in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+        if entity_entry.domain == "binary_sensor" and entity_entry.unique_id not in expected_ids:
+            entity_registry.async_remove(entity_entry.entity_id)
+
     async_add_entities(entities_list, update_before_add=True)
+
 
 class TesiraNetConnBinarySensor(BinarySensorEntity):
     """Binary sensor for Tesira connection status."""

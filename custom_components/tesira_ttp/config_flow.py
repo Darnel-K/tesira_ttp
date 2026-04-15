@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 9:35:13 PM                                                                #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, April 15th 2026, 11:18:43 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -37,7 +37,7 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import DOMAIN, DICT_KEYS, DEFAULTS, CONFIG_MODES, SUPPORTED_BLOCKS, BLOCK_SCHEMA_DATA
 from .tesira_client import TesiraClient
-from .util import gen_device_id, gen_device_dict, _redact_device, TesiraTTPException
+from .util import gen_device_id, gen_device_dict, gen_entity_dict, _redact_device, _devices, _entities, _device_name_map, _entity_name_map, TesiraTTPException
 from .schemas import _device_schema, _control_schema, _hub, _entity_schema
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,36 +48,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @property
     def _devices(self) -> dict[str, Any]:
         """Return a copy of the devices dict from the config entry data, or defaults if not available"""
-        entry = self.context.get("entry")
-        if entry is None:
-            return copy.deepcopy(DEFAULTS["DEVICES"])
-
-        return copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
-
-    def _device_name_map(self) -> dict[str, str]:
-        """Return a mapping of human-readable device names to device IDs."""
-
-        devices = self._devices.get("items", {})
-        name_map: dict[str, str] = {}
-        seen_names: set[str] = set()
-
-        # Map display names to IDs, adding a suffix when names collide.
-        for device_id, device in devices.items():
-            info = device.get("device_info", {})
-            base_name = info.get("name", "Unknown Device")
-            serial = info.get("serial_number")
-
-            name = base_name
-
-            # Ensure uniqueness of displayed names
-            if name in seen_names:
-                suffix = serial or device_id[:8]
-                name = f"{base_name} ({suffix})"
-
-            seen_names.add(name)
-            name_map[name] = device_id
-
-        return dict(sorted(name_map.items()))
+        return _devices(self.context.get("entry"))
 
     async def _connectivity_test(self, host: str, port: int, proto: str, user: str, pwrd: str) -> tuple[dict[str, Any] | None, str | None]:
         # Validate credentials/connectivity and return device info or a flow error key.
@@ -183,7 +154,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_select_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         # Let the user choose which configured device to edit.
-        names = self._device_name_map()
+        names = _device_name_map(self._devices)
         if not names:
             return self.async_abort(reason="no_devices")
 
@@ -251,7 +222,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Remove a non-primary device from the config.
         form_errors: dict[str, str] = {}
         entry = self.context.get("entry")
-        names = self._device_name_map()
+        names = _device_name_map(self._devices)
         if not names:
             return self.async_abort(reason="no_devices")
 
@@ -284,7 +255,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Change which configured device is marked as primary.
         form_errors: dict[str, str] = {}
         entry = self.context.get("entry")
-        names = self._device_name_map()
+        names = _device_name_map(self._devices)
         if not names:
             # Cannot select a primary device when none exist.
             return self.async_abort(reason="no_devices")
@@ -338,47 +309,14 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
         self._edit_index: int | None = None
 
     @property
-    def _entities(self) -> dict[str, Any]:
-        """Return a copy of the entities dict from the config entry options, or defaults if not available"""
-        entry = self.config_entry
-        if entry is None:
-            return copy.deepcopy(DEFAULTS["ENTITIES"])
-
-        return copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
+    def _entities(self) -> list[dict[str, Any]]:
+        """Return a copy of the entities list from the config entry options, or defaults if not available"""
+        return _entities(self.config_entry)
 
     @property
     def _devices(self) -> dict[str, Any]:
         """Return a copy of the devices dict from the config entry options, or defaults if not available"""
-        entry = self.config_entry
-        if entry is None:
-            return copy.deepcopy(DEFAULTS["DEVICES"])
-
-        return copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
-
-    def _device_name_map(self) -> dict[str, str]:
-        """Return a mapping of human-readable device names to device IDs."""
-
-        devices = self._devices.get("items", {})
-        name_map: dict[str, str] = {}
-        seen_names: set[str] = set()
-
-        # Map display names to IDs, adding a suffix when names collide.
-        for device_id, device in devices.items():
-            info = device.get("device_info", {})
-            base_name = info.get("name", "Unknown Device")
-            serial = info.get("serial_number")
-
-            name = base_name
-
-            # Ensure uniqueness of displayed names
-            if name in seen_names:
-                suffix = serial or device_id[:8]
-                name = f"{base_name} ({suffix})"
-
-            seen_names.add(name)
-            name_map[name] = device_id
-
-        return dict(sorted(name_map.items()))
+        return _devices(self.config_entry)
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         # Show the options flow menu.
@@ -402,77 +340,82 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
 
         block_type = SUPPORTED_BLOCKS[user_input["select"]]
         self.context["block_type"] = block_type
-        return self.async_show_form(step_id="add_entity", data_schema=_entity_schema(block_type=block_type, device_names=self._device_name_map()), errors={})
+        return self.async_show_form(step_id="add_entity", data_schema=_entity_schema(block_type=block_type, device_names=_device_name_map(self._devices)), errors={})
 
     async def async_step_add_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         # Collect values and append a new entity definition.
         form_errors: dict[str, str] = {}
         block_type = self.context.get("block_type")
-        device_names = self._device_name_map()
+        device_names = _device_name_map(self._devices)
         if user_input is None:
             return self.async_show_form(step_id="add_entity", data_schema=_entity_schema(block_type=block_type, device_names=device_names), errors=form_errors)
 
         # Build the entity payload from schema-defined fields.
-        fields = BLOCK_SCHEMA_DATA[block_type]["fields"]
-        entity = {}
-        entity["supported_entity_types"] = BLOCK_SCHEMA_DATA[block_type].get("supported_entity_types", [])
-        for field in fields:
-            # Copy each configured field from the submitted form.
-            entity[field] = user_input.get(field)
-            if field == "device" and user_input.get(field) != "None":
-                # Persist selected devices by ID instead of display name.
-                entity[field] = device_names.get(user_input.get(field))
+        entity = gen_entity_dict(block_type=block_type, form_data=user_input, device_names=device_names)
 
         entities = self._entities
-        entities[block_type].append(entity)
+        entities.append(entity)
 
 
         return self.async_create_entry(title="", data={DICT_KEYS["ENTITIES"]: entities})
 
-    # async def async_step_select_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-    #     labels = self._label_map()
-    #     if not labels:
-    #         return self.async_abort(reason="no_controls")
+    async def async_step_select_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Let the user choose which configured entity to edit.
+        entities = _entity_name_map(self._entities)
+        if not entities:
+            return self.async_abort(reason="no_entities")
 
-    #     if user_input is None:
-    #         schema = vol.Schema({vol.Required("which"): vol.In(list(labels.keys()))})
-    #         return self.async_show_form(step_id="select_entity", data_schema=schema, errors={})
+        if user_input is None:
+            schema = vol.Schema({vol.Required("select"): vol.In(list(entities.keys()))})
+            return self.async_show_form(step_id="select_entity", data_schema=schema, errors={})
 
-    #     self._edit_index = labels[user_input["which"]]
-    #     defaults = self._controls[self._edit_index]
-    #     return self.async_show_form(step_id="edit_entity", data_schema=_control_schema(defaults), errors={})
+        entity_names = list(entities.keys())
+        self._edit_index = entity_names.index(user_input["select"])
+        block_type = self._entities[self._edit_index].get("block_type")
+        self.context["block_type"] = block_type
+        device_names = _device_name_map(self._devices)
+        device_id_to_name = {v: k for k, v in device_names.items()}
+        entity = self._entities[self._edit_index]
+        defaults = {
+            field: device_id_to_name.get(entity.get(field), "None") if field == "device" else entity.get(field)
+            for field in BLOCK_SCHEMA_DATA.get(block_type, {}).get("fields", [])
+        }
+        return self.async_show_form(step_id="edit_entity", data_schema=_entity_schema(block_type=block_type, device_names=device_names, defaults=defaults), errors={})
 
-    # async def async_step_edit_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-    #     if self._edit_index is None:
-    #         return self.async_abort(reason="unknown")
+    async def async_step_edit_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Apply updated values to the selected entity.
+        if self._edit_index is None:
+            return self.async_abort(reason="unknown")
 
-    #     if user_input is None:
-    #         defaults = self._controls[self._edit_index]
-    #         return self.async_show_form(step_id="edit_entity", data_schema=_control_schema(defaults), errors={})
+        block_type = self.context.get("block_type")
+        device_names = _device_name_map(self._devices)
+        device_id_to_name = {v: k for k, v in device_names.items()}
+        entity = self._entities[self._edit_index]
+        defaults = {
+            field: device_id_to_name.get(entity.get(field), "None") if field == "device" else entity.get(field)
+            for field in BLOCK_SCHEMA_DATA.get(block_type, {}).get("fields", [])
+        }
 
-    #     controls = self._controls
-    #     controls[self._edit_index] = {
-    #         DICT_KEYS["CONTROL_NAME"]: user_input[DICT_KEYS["CONTROL_NAME"]],
-    #         DICT_KEYS["INSTANCE_TAG"]: user_input[DICT_KEYS["INSTANCE_TAG"]],
-    #         DICT_KEYS["CHANNEL"]: user_input[DICT_KEYS["CHANNEL"]],
-    #         DICT_KEYS["MIN_DB"]: user_input[DICT_KEYS["MIN_DB"]],
-    #         DICT_KEYS["MAX_DB"]: user_input[DICT_KEYS["MAX_DB"]],
-    #         DICT_KEYS["STEP_DB"]: user_input[DICT_KEYS["STEP_DB"]],
-    #     }
-    #     self._edit_index = None
-    #     return self.async_create_entry(title="", data={DICT_KEYS["CONTROLS"]: controls})
+        if user_input is None:
+            return self.async_show_form(step_id="edit_entity", data_schema=_entity_schema(block_type=block_type, device_names=device_names, defaults=defaults), errors={})
 
-    # async def async_step_remove_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-    #     labels = self._label_map()
-    #     if not labels:
-    #         return self.async_abort(reason="no_controls")
+        entities = self._entities
+        entities[self._edit_index] = gen_entity_dict(block_type=block_type, form_data=user_input, device_names=device_names)
+        self._edit_index = None
+        return self.async_create_entry(title="", data={DICT_KEYS["ENTITIES"]: entities})
 
-    #     if user_input is None:
-    #         schema = vol.Schema({vol.Required("remove"): cv.multi_select(labels)})
-    #         return self.async_show_form(step_id="remove_entity", data_schema=schema, errors={})
+    async def async_step_remove_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        entities = _entity_name_map(self._entities)
+        if not entities:
+            return self.async_abort(reason="no_entities")
 
-    #     selected_labels = set(user_input["remove"])
-    #     selected_indices = {labels[label] for label in selected_labels}
-    #     controls = [c for i, c in enumerate(self._controls) if i not in selected_indices]
+        if user_input is None:
+            schema = vol.Schema({vol.Required("select"): cv.multi_select(entities)})
+            return self.async_show_form(step_id="remove_entity", data_schema=schema, errors={})
 
-    #     return self.async_create_entry(title="", data={DICT_KEYS["CONTROLS"]: controls})
+        selected_entities = set(user_input["select"])
+        entity_names = list(entities.keys())
+        selected_indices = {entity_names.index(name) for name in selected_entities if name in entity_names}
+        items = [c for i, c in enumerate(self._entities) if i not in selected_indices]
+
+        return self.async_create_entry(title="", data={DICT_KEYS["ENTITIES"]: items})

@@ -71,21 +71,15 @@
                 }
             },
             "remove_device": {
-                "title": "Remove Devices"
+                "title": "Remove Devices",
+                "data": {
+                    "select": "Select a device to remove"
+                }
             },
             "change_primary": {
-                "title": "Change Primary Device"
-            },
-            "control": {
-                "title": "Add first control",
-                "description": "Add the first level control (instance tag + channel). You can add more later in Configure.",
+                "title": "Change Primary Device",
                 "data": {
-                    "name": "Name",
-                    "instance_tag": "Instance tag",
-                    "channel": "Channel",
-                    "min_db": "Min dB",
-                    "max_db": "Max dB",
-                    "step_db": "Step dB"
+                    "select": "Select a device to change to primary"
                 }
             }
         },
@@ -96,8 +90,10 @@
             "unknown": "An unknown error occurred.",
             "device_info_failed": "Connected to the Tesira device but failed to retrieve device information. Please check the connection and try again.",
             "different_device": "The provided connection details correspond to a different Tesira device than the one currently configured. Please check your input and try again.",
-            "device_not_found": "The device ID generated from the provided connection details was not found in the existing configuration. This should never happen. Please check your input and try again.",
-            "device_exists": "A device with the same ID already exists in the configuration. Please check your input and try again."
+            "device_not_found": "The device was not found in the existing configuration. This should never happen. Please check your input and try again.",
+            "device_exists": "A device with the same ID already exists in the configuration. Please check your input and try again.",
+            "cannot_remove_primary": "Cannot remove the primary device. Please change the primary device before removing this one.",
+            "already_primary": "Selected device is already the primary device."
         },
         "abort": {
             "already_configured": "This Tesira device is already configured.",
@@ -114,9 +110,15 @@
             "init": {
                 "title": "Configure Entities",
                 "menu_options": {
-                    "add_entity": "Add Entity",
+                    "select_type": "Add Entity",
                     "select_entity": "Edit Entity",
                     "remove_entity": "Remove Entity"
+                }
+            },
+            "select_type": {
+                "title": "Select Block Type",
+                "data": {
+                    "select": "Select a block type to add an entity"
                 }
             },
             "add_entity": {
@@ -125,31 +127,35 @@
                     "name": "Name",
                     "instance_tag": "Instance tag",
                     "channel": "Channel",
-                    "min_db": "Min dB",
-                    "max_db": "Max dB",
-                    "step_db": "Step dB"
+                    "subscribe": "Enable Live Updates (Recommended)",
+                    "device": "Select device to associate with this entity (optional)"
                 }
             },
             "select_entity": {
-                "title": "Select Entity"
+                "title": "Select Entity",
+                "data": {
+                    "select": "Select an entity to edit"
+                }
             },
             "edit_entity": {
                 "title": "Edit Entity",
                 "data": {
-                    "name": "Name",
                     "instance_tag": "Instance tag",
                     "channel": "Channel",
-                    "min_db": "Min dB",
-                    "max_db": "Max dB",
-                    "step_db": "Step dB"
+                    "subscribe": "Enable Live Updates (Recommended)",
+                    "device": "Select device to associate with this entity (optional)"
                 }
             },
             "remove_entity": {
-                "title": "Remove Entities"
+                "title": "Remove Entities",
+                "data": {
+                    "select": "Select entities to remove"
+                }
             }
         },
         "abort": {
-            "no_controls": "No entities are configured."
+            "no_entities": "No entities are configured.",
+            "no_supported_blocks": "No supported block types available. Please raise a feature request to add support for more block types."
         }
     }
 }

@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 12:37:23 AM                                                               #
+# Last Modified: Thursday, April 16th 2026, 12:09:00 AM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -32,6 +32,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.components.media_player import MediaPlayerEntity
 from homeassistant.components.media_player.const import MediaPlayerEntityFeature, MediaPlayerState
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, DICT_KEYS, DEFAULTS
 from .util import db_to_level, level_to_db
@@ -48,28 +49,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entities_list = []
 
     # Build entities from the dynamic options structure by block type.
-    for block_type, item_list in entities.items():
-        for item in item_list:
-            if "media_player" in item["supported_entity_types"]:
-                 match block_type:
-                    case "level":
-                         entities_list.append(TesiraLevelBlock(hub=hub, hubkey=hubkey, entity=item))
+    for entity in entities:
+        if "media_player" in entity["supported_entity_types"]:
+            match entity["block_type"]:
+                case "level":
+                    entities_list.append(TesiraLevelBlock(hub=hub, hubkey=hubkey, entity=entity))
+
+
+    # Remove stale media_player entities no longer present in the current config.
+    entity_registry = er.async_get(hass)
+    expected_ids = {e.unique_id for e in entities_list}
+    for entity_entry in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+        if entity_entry.domain == "media_player" and entity_entry.unique_id not in expected_ids:
+            entity_registry.async_remove(entity_entry.entity_id)
 
     async_add_entities(entities_list, update_before_add=True)
-
-    # controls: list[dict[str, Any]] = list(entry.options.get(DICT_KEYS["CONTROLS"], []))
-
-    # entities: list[TesiraVolumeMediaPlayer] = []
-    # for c in controls:
-    #     name = c.get(DICT_KEYS["CONTROL_NAME"], DEFAULTS["CONTROL_NAME"])
-    #     tag = c[DICT_KEYS["INSTANCE_TAG"]]
-    #     ch = int(c.get(DICT_KEYS["CHANNEL"], DEFAULTS["CHANNEL"]))
-    #     min_db = float(c.get(DICT_KEYS["MIN_DB"], DEFAULTS["MIN_DB"]))
-    #     max_db = float(c.get(DICT_KEYS["MAX_DB"], DEFAULTS["MAX_DB"]))
-    #     step_db = float(c.get(DICT_KEYS["STEP_DB"], DEFAULTS["STEP_DB"]))
-    #     entities.append(TesiraVolumeMediaPlayer(hub, hubkey, name, tag, ch, min_db, max_db, step_db))
-
-    # async_add_entities(entities, update_before_add=True)
 
 class TesiraLevelBlock(MediaPlayerEntity):
     """Expose a Tesira level block channel as a Home Assistant media player volume entity."""
@@ -79,11 +73,12 @@ class TesiraLevelBlock(MediaPlayerEntity):
         self._hubkey = hubkey
         self._entity = entity
         self._instance_tag = entity.get("instance_tag")
+        self._block_type = entity.get("block_type")
         self._device_id = entity.get("device")
         self._channel = int(entity.get("channel"))
         self._sub = entity.get("subscribe")
-        self._attr_name = f"Tesira Level Block - {self._instance_tag} - Channel {self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
-        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_level_{self._instance_tag}_{self._channel}".lower()
+        self._attr_name = f"Tesira Level Block - Tag:{self._instance_tag} - Attr:Level - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_level_{self._channel}".lower()
         self._attr_supported_features = (
             MediaPlayerEntityFeature.VOLUME_SET
             | MediaPlayerEntityFeature.VOLUME_STEP

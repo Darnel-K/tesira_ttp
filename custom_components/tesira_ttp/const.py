@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, April 14th 2026, 12:05:13 AM                                                                 #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Wednesday, April 15th 2026, 10:12:08 PM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -89,12 +89,11 @@ BLOCK_SCHEMA_DATA = {
 }
 
 SUPPORTED_BLOCKS = {}
-DEFAULT_ENTITIES = {}
+DEFAULT_ENTITIES = []
 
 # Build selector labels and default entity containers from a single block schema source.
 for block_type, data in BLOCK_SCHEMA_DATA.items():
     SUPPORTED_BLOCKS[data["label"]] = block_type
-    DEFAULT_ENTITIES[block_type] = []
 
 # DEFAULT_ENTITIES = {
 #     "preset": [],
