@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\hub.py                                                                       #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, April 7th 2026, 11:07:07 PM                                                                  #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Wednesday, April 15th 2026, 9:35:13 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -69,16 +69,12 @@ class TesiraHub:
             heartbeat_jitter=heartbeat_jitter,
             safe_mode=safe_mode
         )
+        # Serialize I/O to avoid interleaving command and subscription operations.
         self._lock = asyncio.Lock()
-
-    # @property
-    # async def key(self) -> str:
-    #     device_info = await self.client.device_info()
-    #     device_info = device_info["info"]
-    #     return gen_hub_key(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
 
     @property
     def is_connected(self) -> bool:
+        # TesiraClient sets _conn when a transport session is active.
         if self.client._conn is not None:
             return True
         else:

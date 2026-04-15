@@ -84,6 +84,7 @@ def _entity_schema(defaults: dict[str, Any] | None = None, block_type: str | Non
     fields = block_data.get("fields", [])
     schema_dict = {}
 
+    # Convert declarative field metadata into voluptuous validators at runtime.
     for field in fields:
         field_info = SCHEMA_FIELDS.get(field)
         default_value = field_info.get("default", None)

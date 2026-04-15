@@ -47,6 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entities = copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
     entities_list = []
 
+    # Build entities from the dynamic options structure by block type.
     for block_type, item_list in entities.items():
         for item in item_list:
             if "media_player" in item["supported_entity_types"]:
@@ -71,6 +72,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # async_add_entities(entities, update_before_add=True)
 
 class TesiraLevelBlock(MediaPlayerEntity):
+    """Expose a Tesira level block channel as a Home Assistant media player volume entity."""
+
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
         self._hubkey = hubkey
@@ -94,6 +97,7 @@ class TesiraLevelBlock(MediaPlayerEntity):
         self._muted: bool | None = None
 
         if self._sub:
+            # Subscription mode pushes updates from the DSP, so polling is unnecessary.
             self._attr_should_poll = False
         else:
             self._attr_should_poll = True
@@ -113,6 +117,7 @@ class TesiraLevelBlock(MediaPlayerEntity):
         return {"identifiers": {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
 
     async def get_block_details(self) -> None:
+        # Pull live min/max dB limits to normalize volume values correctly for this block.
         resp = await self._hub.json(f"{self._instance_tag} get maxLevel {self._channel}")
         self._max_db = float(resp.get("value", 12.0))
         resp = await self._hub.json(f"{self._instance_tag} get minLevel {self._channel}")
@@ -139,6 +144,7 @@ class TesiraLevelBlock(MediaPlayerEntity):
     async def async_added_to_hass(self) -> None:
         self._hass = self.hass
         if self._sub:
+            # Prime state once before starting subscriptions to avoid an empty initial UI state.
             await self.async_update()
             await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_media_player_level_{self._instance_tag}_{self._channel}", 100, self._update_level_from_sub)
             await self._hub.subscribe(self._instance_tag, "mute", self._channel, f"hass_media_player_mute_{self._instance_tag}_{self._channel}", 100, self._update_mute_from_sub)
@@ -150,6 +156,7 @@ class TesiraLevelBlock(MediaPlayerEntity):
 
     async def async_update(self) -> None:
         try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             await self.get_block_details()
             resp = await self._hub.json(f"{self._instance_tag} get level {self._channel}")
             level = resp["value"]

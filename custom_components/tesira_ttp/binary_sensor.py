@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 12:28:40 AM                                                               #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, April 15th 2026, 9:23:26 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -46,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     entities = copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
     entities_list = []
 
+    # Placeholder for future block-driven binary sensors from options entities.
     for block_type, item_list in entities.items():
         for item in item_list:
             if "binary_sensor" in item["supported_entity_types"]:
@@ -87,9 +88,7 @@ class TesiraNetConnBinarySensor(BinarySensorEntity):
 
     async def _async_ping(self, host: str) -> bool:
         """Ping the host using the OS ping command."""
-        # On Linux/HA OS: ping -c 1 -W 1 <host>
-        #   -c 1 : send 1 packet
-        #   -W 1 : timeout after 1 second
+        # Home Assistant containers use Linux ping flags: one packet, one-second timeout.
         try:
             proc = await asyncio.create_subprocess_exec(
                 "ping", "-c", "1", "-W", "1", host,
@@ -102,6 +101,7 @@ class TesiraNetConnBinarySensor(BinarySensorEntity):
             return False
 
     async def async_update(self):
+        # Keep this state independent from protocol connectivity to show host reachability.
         self._attr_is_on = await self._async_ping(self._device_connection_info.get(DICT_KEYS["HOST"]))
 
 class TesiraHubConnBinarySensor(BinarySensorEntity):
@@ -124,4 +124,5 @@ class TesiraHubConnBinarySensor(BinarySensorEntity):
             return self._attr_is_on
 
     async def async_update(self):
+        # Reflect the client session state managed by TesiraHub/TesiraClient.
         self._attr_is_on = self._hub.is_connected

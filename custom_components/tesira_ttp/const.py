@@ -91,6 +91,7 @@ BLOCK_SCHEMA_DATA = {
 SUPPORTED_BLOCKS = {}
 DEFAULT_ENTITIES = {}
 
+# Build selector labels and default entity containers from a single block schema source.
 for block_type, data in BLOCK_SCHEMA_DATA.items():
     SUPPORTED_BLOCKS[data["label"]] = block_type
     DEFAULT_ENTITIES[block_type] = []

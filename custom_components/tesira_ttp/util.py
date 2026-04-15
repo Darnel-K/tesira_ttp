@@ -64,6 +64,7 @@ def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, devi
     }
 
 def _redact_device(device: dict[str, Any]) -> dict[str, Any]:
+    # Return a copy so logging/debug views never mutate stored config data.
     redacted = copy.deepcopy(device)
     auth = redacted.get("connection_info", {}).get("auth")
     if auth:
@@ -98,6 +99,7 @@ def gen_device_id(deviceModel: str, deviceRevision: int, serialNumber: str, form
         case "plain":
              return f"{device_id['deviceModel']}:{device_id['deviceRevision']}:{device_id['serialNumber']}"
         case "b64":
+               # URL-safe base64 keeps IDs compact while remaining safe for HA identifiers.
              return base64.urlsafe_b64encode(json.dumps(device_id, sort_keys=True).encode()).decode()
 
 def parse_device_id(device_id: str, format: str = "b64") -> Dict[str, str]:
@@ -125,6 +127,7 @@ def parse_device_id(device_id: str, format: str = "b64") -> Dict[str, str]:
                  raise ValueError("Invalid plain format. Expected 'deviceModel:deviceRevision:serialNumber'")
              return {"deviceModel": parts[0], "deviceRevision": parts[1], "serialNumber": parts[2]}
         case "b64":
+               # Input is expected to match gen_device_id(..., format="b64") output.
              decoded = base64.urlsafe_b64decode(device_id.encode()).decode()
              return json.loads(decoded)
 

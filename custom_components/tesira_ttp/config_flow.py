@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 12:11:19 AM                                                               #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Wednesday, April 15th 2026, 9:35:13 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -47,6 +47,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @property
     def _devices(self) -> dict[str, Any]:
+        """Return a copy of the devices dict from the config entry data, or defaults if not available"""
         entry = self.context.get("entry")
         if entry is None:
             return copy.deepcopy(DEFAULTS["DEVICES"])
@@ -60,6 +61,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         name_map: dict[str, str] = {}
         seen_names: set[str] = set()
 
+        # Map display names to IDs, adding a suffix when names collide.
         for device_id, device in devices.items():
             info = device.get("device_info", {})
             base_name = info.get("name", "Unknown Device")
@@ -78,6 +80,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return dict(sorted(name_map.items()))
 
     async def _connectivity_test(self, host: str, port: int, proto: str, user: str, pwrd: str) -> tuple[dict[str, Any] | None, str | None]:
+        # Validate credentials/connectivity and return device info or a flow error key.
         try:
             client = TesiraClient(host=host, port=port, proto=proto, username=user, password=pwrd)
             await client.connect()
@@ -105,6 +108,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return None, "cannot_connect"
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Collect the hub title before requesting device connection details.
         form_errors: dict[str, str] = {}
         form_data: dict[str, Any] = {}
 
@@ -117,12 +121,14 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(step_id="user", data_schema=_hub(form_data), errors=form_errors)
 
     async def async_step_add_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Add a device in setup mode or reconfigure mode.
         form_errors: dict[str, str] = {}
         entry = self.context.get("entry")
         mode = CONFIG_MODES["RECONFIGURE"] if entry else CONFIG_MODES["INIT"]
         form_data: dict[str, Any] = {}
 
         if user_input is not None:
+            # Read connection settings from the form.
             form_data[DICT_KEYS["HOST"]] = user_input[DICT_KEYS["HOST"]]
             form_data[DICT_KEYS["PORT"]] = user_input[DICT_KEYS["PORT"]]
             form_data[DICT_KEYS["PROTO"]] = user_input[DICT_KEYS["PROTO"]]
@@ -135,14 +141,17 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if error:
                 return self.async_show_form(step_id="add_device", data_schema=_device_schema(form_data), errors={"base": error})
 
+            # Build a stable device ID and persisted device payload.
             device_id = gen_device_id(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
             device = gen_device_dict(form_data[DICT_KEYS["HOST"]], form_data[DICT_KEYS["PORT"]], form_data[DICT_KEYS["PROTO"]], form_data[DICT_KEYS["USER"]], pwrd, device_info)
 
+            # Prevent duplicate entries for the same discovered device.
             if device_id in devices["items"]:
                 _LOGGER.debug("Device with ID %s already exists in config, skipping addition", device_id)
                 form_errors["base"] = "device_exists"
                 return self.async_show_form(step_id="add_device", data_schema=_device_schema(form_data), errors=form_errors)
 
+            # Create a new entry during onboarding, otherwise update and reload the existing entry.
             if mode == CONFIG_MODES["INIT"]:
                 title: str = self.context.get(DICT_KEYS["HUB_TITLE"])
                 devices["items"][device_id] = device
@@ -158,6 +167,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(step_id="add_device", data_schema=_device_schema(), errors=form_errors)
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Show the top-level reconfiguration menu.
         self.context['entry'] = self._get_reconfigure_entry()
         return self.async_show_menu(
             step_id="reconfigure",
@@ -165,12 +175,14 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_devices(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Show device management actions.
         return self.async_show_menu(
             step_id="devices",
             menu_options=["add_device", "select_device", "remove_device", "change_primary"],
         )
 
     async def async_step_select_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Let the user choose which configured device to edit.
         names = self._device_name_map()
         if not names:
             return self.async_abort(reason="no_devices")
@@ -179,22 +191,27 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             schema = vol.Schema({vol.Required("select"): vol.In(list(names.keys()))})
             return self.async_show_form(step_id="select_device", data_schema=schema, errors={})
 
+        # Store the selected device ID and open the edit form with current defaults.
         edit_id = names[user_input["select"]]
         self.context["edit_id"] = edit_id
         defaults = self._devices["items"][edit_id]["connection_info"]
         return self.async_show_form(step_id="edit_device", data_schema=_device_schema(defaults), errors={})
 
     async def async_step_edit_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Update connection settings for a selected device.
         form_errors: dict[str, str] = {}
         form_data: dict[str, Any] = {}
         entry = self.context.get("entry")
         edit_id = self.context.get("edit_id")
         if edit_id is None:
+            # Defensive guard for invalid flow state.
             return self.async_abort(reason="unknown")
+        # Pre-fill the form with existing connection settings.
         existing_device = self._devices["items"].get(edit_id)
         defaults = existing_device["connection_info"] if existing_device else {}
 
         if user_input is not None:
+            # Read and validate updated connection settings.
             form_data[DICT_KEYS["HOST"]] = user_input[DICT_KEYS["HOST"]]
             form_data[DICT_KEYS["PORT"]] = user_input[DICT_KEYS["PORT"]]
             form_data[DICT_KEYS["PROTO"]] = user_input[DICT_KEYS["PROTO"]]
@@ -203,19 +220,23 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             devices = self._devices
 
+            # Reject changes when the updated connection cannot be validated.
             device_info, error = await self._connectivity_test(form_data[DICT_KEYS["HOST"]], form_data[DICT_KEYS["PORT"]], form_data[DICT_KEYS["PROTO"]], form_data[DICT_KEYS["USER"]], pwrd)
             if error:
                 return self.async_show_form(step_id="edit_device", data_schema=_device_schema(form_data), errors={"base": error})
 
+            # Rebuild ID and payload from the validated endpoint.
             device_id = gen_device_id(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
             device = gen_device_dict(form_data[DICT_KEYS["HOST"]], form_data[DICT_KEYS["PORT"]], form_data[DICT_KEYS["PROTO"]], form_data[DICT_KEYS["USER"]], pwrd, device_info)
 
             if device_id != edit_id:
+                # Reject edits that point to a different physical device.
                 _LOGGER.error("Device ID mismatch: expected %s but got %s. This should never happen.", edit_id, device_id)
                 form_errors["base"] = "different_device"
                 return self.async_show_form(step_id="edit_device", data_schema=_device_schema(form_data), errors=form_errors)
 
             if device_id not in devices["items"]:
+                # Defensive guard if the original device is missing.
                 _LOGGER.error("Device ID %s not found in existing config. This should never happen.", device_id)
                 form_errors["base"] = "device_not_found"
                 return self.async_show_form(step_id="edit_device", data_schema=_device_schema(form_data), errors=form_errors)
@@ -227,25 +248,30 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(step_id="edit_device", data_schema=_device_schema(defaults), errors=form_errors)
 
     async def async_step_remove_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Remove a non-primary device from the config.
         form_errors: dict[str, str] = {}
         entry = self.context.get("entry")
         names = self._device_name_map()
         if not names:
             return self.async_abort(reason="no_devices")
 
+        # Show device choices by display name.
         schema = vol.Schema({vol.Required("select"): vol.In(list(names.keys()))})
 
         if user_input is None:
             return self.async_show_form(step_id="remove_device", data_schema=schema, errors={})
 
+        # Remove the selected device and reload the entry.
         remove_id = names[user_input["select"]]
         devices = self._devices
         if devices["primary"] == remove_id:
+            # Require changing primary first to keep config valid.
             _LOGGER.error("Cannot remove primary device, please change primary device first.")
             form_errors["base"] = "cannot_remove_primary"
             return self.async_show_form(step_id="remove_device", data_schema=schema, errors=form_errors)
 
         if remove_id not in devices["items"]:
+            # Defensive guard if selection is stale.
             _LOGGER.error("Device ID %s not found in existing config. This should never happen.", remove_id)
             form_errors["base"] = "device_not_found"
             return self.async_show_form(step_id="remove_device", data_schema=schema, errors=form_errors)
@@ -255,10 +281,12 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_update_reload_and_abort(entry, data={DICT_KEYS["DEVICES"]: devices}, reason="device_removed")
 
     async def async_step_change_primary(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Change which configured device is marked as primary.
         form_errors: dict[str, str] = {}
         entry = self.context.get("entry")
         names = self._device_name_map()
         if not names:
+            # Cannot select a primary device when none exist.
             return self.async_abort(reason="no_devices")
 
         schema = vol.Schema({vol.Required("select"): vol.In(list(names.keys()))})
@@ -269,10 +297,12 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         new_primary_device = names[user_input["select"]]
         devices = self._devices
         if devices["primary"] == new_primary_device:
+            # No-op guard when the selected device is already primary.
             _LOGGER.debug("Selected device is already primary, no changes made.")
             form_errors["base"] = "already_primary"
             return self.async_show_form(step_id="change_primary", data_schema=schema, errors=form_errors)
         if new_primary_device not in devices["items"]:
+            # Defensive guard if selection is stale.
             _LOGGER.error("Device ID %s not found in existing config. This should never happen.", new_primary_device)
             form_errors["base"] = "device_not_found"
             return self.async_show_form(step_id="change_primary", data_schema=schema, errors=form_errors)
@@ -282,6 +312,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_update_reload_and_abort(entry, data={DICT_KEYS["DEVICES"]: devices}, reason="primary_changed")
 
     async def async_step_edit_hub_title(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Update the display title for this hub entry.
         form_errors: dict[str, str] = {}
 
         entry = self.context['entry']
@@ -308,6 +339,7 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
 
     @property
     def _entities(self) -> dict[str, Any]:
+        """Return a copy of the entities dict from the config entry options, or defaults if not available"""
         entry = self.config_entry
         if entry is None:
             return copy.deepcopy(DEFAULTS["ENTITIES"])
@@ -316,6 +348,7 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
 
     @property
     def _devices(self) -> dict[str, Any]:
+        """Return a copy of the devices dict from the config entry options, or defaults if not available"""
         entry = self.config_entry
         if entry is None:
             return copy.deepcopy(DEFAULTS["DEVICES"])
@@ -329,6 +362,7 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
         name_map: dict[str, str] = {}
         seen_names: set[str] = set()
 
+        # Map display names to IDs, adding a suffix when names collide.
         for device_id, device in devices.items():
             info = device.get("device_info", {})
             base_name = info.get("name", "Unknown Device")
@@ -346,25 +380,15 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
 
         return dict(sorted(name_map.items()))
 
-    # def _label_map(self) -> dict[str, int]:
-    #     labels: dict[str, int] = {}
-    #     for i, c in enumerate(self._controls):
-    #         name = c.get(DICT_KEYS["CONTROL_NAME"], DEFAULTS["CONTROL_NAME"])
-    #         tag = c.get(DICT_KEYS["INSTANCE_TAG"], "?")
-    #         ch = c.get(DICT_KEYS["CHANNEL"], "?")
-    #         label = f"{name} ({tag} ch{ch})"
-    #         if label in labels:
-    #             label = f"{label} [{i}]"
-    #         labels[label] = i
-    #     return labels
-
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Show the options flow menu.
         return self.async_show_menu(
             step_id="init",
             menu_options=["select_type", "select_entity", "remove_entity"],
         )
 
     async def async_step_select_type(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Select a DSP block type for a new entity.
         form_errors: dict[str, str] = {}
         form_data: dict[str, Any] = {}
 
@@ -372,6 +396,7 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
             return self.async_abort(reason="no_supported_blocks")
 
         if user_input is None:
+            # Show supported block types.
             schema = vol.Schema({vol.Required("select"): vol.In(list(SUPPORTED_BLOCKS.keys()))})
             return self.async_show_form(step_id="select_type", data_schema=schema, errors=form_errors)
 
@@ -380,18 +405,22 @@ class TesiraTtpOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="add_entity", data_schema=_entity_schema(block_type=block_type, device_names=self._device_name_map()), errors={})
 
     async def async_step_add_entity(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        # Collect values and append a new entity definition.
         form_errors: dict[str, str] = {}
         block_type = self.context.get("block_type")
         device_names = self._device_name_map()
         if user_input is None:
             return self.async_show_form(step_id="add_entity", data_schema=_entity_schema(block_type=block_type, device_names=device_names), errors=form_errors)
 
+        # Build the entity payload from schema-defined fields.
         fields = BLOCK_SCHEMA_DATA[block_type]["fields"]
         entity = {}
         entity["supported_entity_types"] = BLOCK_SCHEMA_DATA[block_type].get("supported_entity_types", [])
         for field in fields:
+            # Copy each configured field from the submitted form.
             entity[field] = user_input.get(field)
             if field == "device" and user_input.get(field) != "None":
+                # Persist selected devices by ID instead of display name.
                 entity[field] = device_names.get(user_input.get(field))
 
         entities = self._entities
