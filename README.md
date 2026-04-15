@@ -1,5 +1,5 @@
 
-# Tesira TTP Control Integration for Home Assistant
+# Tesira Text Protocol (SSH & Telnet) Integration for Home Assistant
 
 ![GitHub License](https://img.shields.io/github/license/Darnel-K/tesira_ttp)
 ![HACS Badge](https://img.shields.io/badge/HACS-Custom-orange)
@@ -46,7 +46,7 @@ then restart Home Assistant.
 
 ## Configuration
 
-Navigate to: **Settings → Devices & services → Add integration → Tesira TTP Control (Telnet)**.
+Navigate to: **Settings → Devices & services → Add integration → Tesira Text Protocol (SSH & Telnet)**.
 
 ## Debugging
 
@@ -61,12 +61,12 @@ logger:
 
 ## Development / CLI Testing
 
-An interactive CLI for testing Tesira TTP commands is included:
+An interactive CLI for testing Tesira Text Protocol commands is included:
 
 `custom_components/tesira_ttp/tesira_cli.py`
 
 It provides a cross‑platform interactive shell (powered by `prompt_toolkit`)
-for sending Tesira TTP commands, receiving real‑time publish‑token event updates,
+for sending Tesira Text Protocol commands, receiving real‑time publish‑token event updates,
 and testing SSH or Telnet connectivity directly from the terminal.
 
 ---

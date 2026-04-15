@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 12th 2026, 10:05:27 PM                                                                  #
+# Last Modified: Wednesday, April 15th 2026, 12:30:57 AM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -53,7 +53,7 @@ def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, devi
             }
         },
         "device_info": {
-            "name": f"Biamp - {device_info['deviceModel']} - {device_info['serialNumber']} - {host}:{port}",
+            "name": f"Biamp - {device_info['deviceModel']} - {host}:{port} - ({device_id[:10]})",
             "manufacturer": "Biamp",
             "model": device_info["deviceModel"],
             "model_id": device_info["deviceModel"],
@@ -127,6 +127,31 @@ def parse_device_id(device_id: str, format: str = "b64") -> Dict[str, str]:
         case "b64":
              decoded = base64.urlsafe_b64decode(device_id.encode()).decode()
              return json.loads(decoded)
+
+def clamp(value: float, minimum: float, maximum: float) -> float:
+    """
+    Restrict a value to lie within the given minimum and maximum bounds.
+    """
+    return max(minimum, min(maximum, value))
+
+
+def db_to_level(db_value: float, min_db: float, max_db: float) -> float:
+    """
+    Convert a decibel value into a normalized range [0.0, 1.0].
+    """
+    if max_db <= min_db:
+        return 0.0
+
+    normalized = (db_value - min_db) / (max_db - min_db)
+    return clamp(normalized, 0.0, 1.0)
+
+
+def level_to_db(level: float, min_db: float, max_db: float) -> float:
+    """
+    Convert a normalized value [0.0, 1.0] back into a decibel value.
+    """
+    level = clamp(level, 0.0, 1.0)
+    return min_db + level * (max_db - min_db)
 
 class TesiraTTPException(Exception):
     """Base exception for tesira_ttp."""

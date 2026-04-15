@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, April 4th 2026, 5:22:28 PM                                                                   #
-# Last Modified: Sunday, April 12th 2026, 11:23:04 PM                                                                  #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Wednesday, April 15th 2026, 12:28:40 AM                                                               #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -43,14 +43,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     hubkey = entry.entry_id
     hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
     devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
+    entities = copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
+    entities_list = []
 
-    hub_entities = []
-    hub_entities.append(TesiraHubConnBinarySensor(hub, hubkey))
+    for block_type, item_list in entities.items():
+        for item in item_list:
+            if "binary_sensor" in item["supported_entity_types"]:
+                 pass
+
+
+    entities_list.append(TesiraHubConnBinarySensor(hub, hubkey))
 
     for device_id, device in devices["items"].items():
-        hub_entities.append(TesiraNetConnBinarySensor(hub, device_id, device))
+        entities_list.append(TesiraNetConnBinarySensor(hub, device_id, device))
 
-    async_add_entities(hub_entities, update_before_add=True)
+    async_add_entities(entities_list, update_before_add=True)
 
 class TesiraNetConnBinarySensor(BinarySensorEntity):
     """Binary sensor for Tesira connection status."""
@@ -65,8 +72,8 @@ class TesiraNetConnBinarySensor(BinarySensorEntity):
         self._device = device
         self._device_info = device.get("device_info", {})
         self._device_connection_info = device.get("connection_info", {})
-        self._attr_name = f"Network Connection Status (SN:{self._device_info.get('serial_number')})"
-        self._attr_unique_id = f"tesira_ttp_{self._device_info.get('serial_number')}_netconnstate".lower()
+        self._attr_name = f"Network Connection Status ({self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._device_id[:10]}_netconnstate".lower()
         self._attr_is_on = False
         self._attr_available = True
 
@@ -107,8 +114,8 @@ class TesiraHubConnBinarySensor(BinarySensorEntity):
     def __init__(self, hub: TesiraHub, hubkey: str) -> None:
         self._hub = hub
         self._hubkey = hubkey
-        self._attr_name = f"Hub Connection Status ({self._hubkey})"
-        self._attr_unique_id = f"tesira_ttp_{self._hubkey}_hubconnstate".lower()
+        self._attr_name = f"Hub Connection Status ({self._hubkey[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10]}_hubconnstate".lower()
         self._attr_is_on = False
         self._attr_available = True
 
