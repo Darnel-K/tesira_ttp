@@ -128,7 +128,7 @@
                     "instance_tag": "Instance tag",
                     "channel": "Channel",
                     "subscribe": "Enable Live Updates (Recommended)",
-                    "device": "Select device to associate with this entity (optional)"
+                    "device_id": "Select device to associate with this entity (optional)"
                 }
             },
             "select_entity": {
@@ -143,7 +143,7 @@
                     "instance_tag": "Instance tag",
                     "channel": "Channel",
                     "subscribe": "Enable Live Updates (Recommended)",
-                    "device": "Select device to associate with this entity (optional)"
+                    "device_id": "Select device to associate with this entity (optional)"
                 }
             },
             "remove_entity": {

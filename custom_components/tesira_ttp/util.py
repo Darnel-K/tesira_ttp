@@ -219,6 +219,21 @@ def clamp(value: float, minimum: float, maximum: float) -> float:
     return max(minimum, min(maximum, value))
 
 
+def _coerce_bool(value: Any) -> bool:
+    """Normalize Tesira payload values into a strict boolean."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "on", "1", "yes"}:
+            return True
+        if normalized in {"false", "off", "0", "no"}:
+            return False
+    raise ValueError(f"Could not convert value to bool: {value!r}")
+
+
 def db_to_level(db_value: float, min_db: float, max_db: float) -> float:
     """
     Convert a decibel value into a normalized range [0.0, 1.0].

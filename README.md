@@ -13,7 +13,7 @@
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Darnel-K/tesira_ttp/total)
 ![GitHub release (latest by SemVer)](https://img.shields.io/github/downloads/Darnel-K/tesira_ttp/latest/total)
 
-This Home Assistant integration provides comprehensive control of **Biamp Tesira** systems using the **Tesira Text Protocol (TTP)** over **Telnet (TCP/23)** & **SSH (TCP/22)**. It exposes a **range of entity types**, enabling full interaction with Tesira DSP blocks directly from Home Assistant.
+This Home Assistant integration provides control of **Biamp Tesira** systems using the **Tesira Text Protocol (TTP)** over **Telnet (TCP/23)** and **SSH (TCP/22)**.
 
 > ⚠️ **WORK IN PROGRESS**
 > This project is currently under active development. Features may be incomplete or subject to change.
@@ -46,7 +46,64 @@ then restart Home Assistant.
 
 ## Configuration
 
-Navigate to: **Settings → Devices & services → Add integration → Tesira Text Protocol (SSH & Telnet)**.
+After installation, configure from:
+
+**Settings → Devices & services → Add integration → Tesira Text Protocol (SSH & Telnet)**
+
+### 1. Create Integration (Hub + First Device)
+
+When you add the integration, you will be prompted for:
+
+1. **Hub title**
+2. **Host** (Tesira IP or hostname)
+3. **Port**
+4. **Protocol** (`ssh` or `telnet`)
+5. **Username** (SSH only)
+6. **Password** (SSH only)
+
+Notes:
+
+- Default connection values are SSH on port `22`, user `default`, blank password.
+- Telnet authentication is intentionally restricted to user `default` with blank password.
+- Connectivity and device info are validated before the device is saved.
+
+### 2. Configure Devices (Add/Edit/Remove/Primary)
+
+Device management is available in the **reconfiguration flow** for an existing integration:
+
+1. Open the integration card.
+2. Next to your hub select **⋮ → Reconfigure**.
+3. Choose **Configure Devices**.
+
+Available actions:
+
+- **Add Device**: Add another Tesira endpoint to the same hub.
+- **Edit Device**: Update host/port/protocol/credentials for an existing configured device.
+- **Remove Device**: Remove a device.
+- **Change Primary Device**: Select which configured device is used as the hub connection source.
+
+Important behavior:
+
+- You cannot remove the current primary device until another device is set as primary.
+- Editing a device must resolve to the same physical Tesira device identity.
+
+### 3. Configure Entities (Add/Edit/Remove)
+
+To add or manage entities:
+
+1. Open the integration card.
+2. Next to your hub select **Settings Cog**.
+
+Entity management actions:
+
+- **Add Entity**: Create a new entity from a selected block type.
+- **Edit Entity**: Modify an existing entity definition.
+- **Remove Entity**: Remove one or more entities.
+
+#### How Entity Live Updates Work
+
+- If **Enable Live Updates** is ON, the entity uses Tesira subscriptions for near real-time state changes.
+- If OFF, the entity uses polling updates.
 
 ## Debugging
 
@@ -153,6 +210,18 @@ Special commands include:
 :ping             → measure round‑trip latency
 :exit             → quit the CLI
 ```
+
+## Supported Blocks and Entities
+
+| Block Type | Home Assistant Platform | Main Features |
+| ---------- | ----------------------- | ------------- |
+| `level` | `media_player` | Set volume, step volume, mute/unmute |
+| `logic_state` | `switch` | On/Off, toggle |
+
+Additional entities created automatically:
+
+- Hub connection status binary sensor
+- Per-device network reachability binary sensor
 
 ## Acknowledgements
 
