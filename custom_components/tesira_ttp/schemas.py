@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Monday, April 13th 2026, 12:33:01 AM                                                                   #
-# Last Modified: Tuesday, April 14th 2026, 12:14:59 AM                                                                 #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -59,19 +59,6 @@ def _device_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             }),
             vol.Optional(DICT_KEYS["USER"], default=d.get(DICT_KEYS["USER"], DEFAULTS["USER"])): cv.string,
             vol.Optional(DICT_KEYS["PASS"], default=d.get(DICT_KEYS["PASS"], DEFAULTS["PASS"])): cv.string
-        }
-    )
-
-def _control_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
-    d = defaults or {}
-    return vol.Schema(
-        {
-            vol.Optional(DICT_KEYS["CONTROL_NAME"], default=d.get(DICT_KEYS["CONTROL_NAME"], DEFAULTS["CONTROL_NAME"])): cv.string,
-            vol.Required(DICT_KEYS["INSTANCE_TAG"], default=d.get(DICT_KEYS["INSTANCE_TAG"], "volume")): cv.string,
-            vol.Optional(DICT_KEYS["CHANNEL"], default=int(d.get(DICT_KEYS["CHANNEL"], DEFAULTS["CHANNEL"]))): vol.Coerce(int),
-            vol.Optional(DICT_KEYS["MIN_DB"], default=float(d.get(DICT_KEYS["MIN_DB"], DEFAULTS["MIN_DB"]))): vol.Coerce(float),
-            vol.Optional(DICT_KEYS["MAX_DB"], default=float(d.get(DICT_KEYS["MAX_DB"], DEFAULTS["MAX_DB"]))): vol.Coerce(float),
-            vol.Optional(DICT_KEYS["STEP_DB"], default=float(d.get(DICT_KEYS["STEP_DB"], DEFAULTS["STEP_DB"]))): vol.Coerce(float),
         }
     )
 

@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\hub.py                                                                       #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 9:35:13 PM                                                                #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Thursday, April 16th 2026, 11:20:15 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -28,7 +28,7 @@ import asyncio
 import logging
 
 from .tesira_client import TesiraClient
-# from .util import gen_hub_key
+from .const import DEFAULTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,10 +37,10 @@ class TesiraHub:
 
     def __init__(self,
         host: str,
-        username: str = "default",
-        password: str = "",
-        port: int = None,
-        proto: str = "ssh",
+        username: str = DEFAULTS["USER"],
+        password: str = DEFAULTS["PASS"],
+        port: int = DEFAULTS["PORT"],
+        proto: str = DEFAULTS["PROTO"],
         known_hosts=None,
         heartbeat_interval: float = 10.0,
         heartbeat_failure_threshold: int = 3,

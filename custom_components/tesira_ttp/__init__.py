@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 9:23:26 PM                                                                #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -53,13 +53,13 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Validate config entry data and create/reuse a hub instance for this entry.
     devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
-    primary_device_id = devices.get("primary")
-    if not primary_device_id or primary_device_id not in devices["items"]:
+    primary_device_id = devices.get(DICT_KEYS["PRIMARY_DEVICE"])
+    if not primary_device_id or primary_device_id not in devices[DICT_KEYS["DEVICE_ITEMS"]]:
         _LOGGER.error("Invalid or missing primary device in config entry %s", entry.entry_id)
         return False
-    primary_device = devices["items"][primary_device_id]
-    conn_info = primary_device["connection_info"]
-    auth_credentials = conn_info.get("auth", {})
+    primary_device = devices[DICT_KEYS["DEVICE_ITEMS"]][primary_device_id]
+    conn_info = primary_device[DICT_KEYS["DEVICE_CONNECTION_INFO"]]
+    auth_credentials = conn_info.get(DICT_KEYS["DEVICE_CONNECTION_INFO_AUTH"], {})
     host = conn_info.get(DICT_KEYS["HOST"])
     port = conn_info.get(DICT_KEYS["PORT"])
     proto = conn_info.get(DICT_KEYS["PROTO"])
@@ -81,8 +81,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Register all configured devices so entities can attach to a stable HA device record.
     device_registry = dr.async_get(hass)
-    for device_id, device in devices["items"].items():
-        device_info = device.get("device_info", {})
+    for device_id, device in devices[DICT_KEYS["DEVICE_ITEMS"]].items():
+        device_info = device.get(DICT_KEYS["DEVICE_INFO"], {})
         device_registry.async_get_or_create(config_entry_id=entry.entry_id, identifiers={(DOMAIN, device_id)}, manufacturer=device_info.get("manufacturer"), model=device_info.get("model"), model_id=device_info.get("model_id"), name=device_info.get('name'), sw_version=device_info.get("sw_version"), hw_version=device_info.get("hw_version"), serial_number=device_info.get("serial_number"))
 
     # Set up update listener for options changes

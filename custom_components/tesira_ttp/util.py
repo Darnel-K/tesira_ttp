@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 11:18:43 PM                                                               #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -50,13 +50,13 @@ def _entities(entry: dict[Any, Any]) -> list[dict[str, Any]]:
 def _device_name_map(devices: dict[Any, Any]) -> dict[str, str]:
     """Return a mapping of human-readable device names to device IDs."""
 
-    items = devices.get("items", {})
+    items = devices.get(DICT_KEYS["DEVICE_ITEMS"], {})
     name_map: dict[str, str] = {}
     seen_names: set[str] = set()
 
     # Map display names to IDs, adding a suffix when names collide.
     for device_id, device in items.items():
-        info = device.get("device_info", {})
+        info = device.get(DICT_KEYS["DEVICE_INFO"], {})
         base_name = info.get("name", "Unknown Device")
         serial = info.get("serial_number")
 
@@ -79,7 +79,7 @@ def _entity_name_map(entities: list[dict[str, Any]]) -> dict[str, str]:
 
     # Map display names to themselves, adding a suffix when names collide.
     for i, entity in enumerate(entities):
-        name = f"{entity.get('block_type', 'Unknown Block')} - {entity.get('instance_tag', '')}"
+        name = f"{entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"], 'Unknown Block')} - {entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], '')}"
 
         if name in names:
             name = f"{name} ({i})"
@@ -98,16 +98,16 @@ def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, devi
     if device_id is None:
         device_id = gen_device_id(device_info["deviceModel"], device_info["deviceRevision"], device_info["serialNumber"])
     return {
-        "connection_info": {
+        DICT_KEYS["DEVICE_CONNECTION_INFO"]: {
             DICT_KEYS["HOST"]: host,
             DICT_KEYS["PORT"]: port,
             DICT_KEYS["PROTO"]: proto,
-            "auth": {
+            DICT_KEYS["DEVICE_CONNECTION_INFO_AUTH"]: {
                 DICT_KEYS["USER"]: user,
                 DICT_KEYS["PASS"]: pwrd
             }
         },
-        "device_info": {
+        DICT_KEYS["DEVICE_INFO"]: {
             "name": f"Biamp - {device_info['deviceModel']} - {host}:{port} - ({device_id[:10]})",
             "manufacturer": "Biamp",
             "model": device_info["deviceModel"],
@@ -130,15 +130,15 @@ def gen_entity_dict(block_type: str, form_data: dict[str, Any], device_names: di
         A dictionary with the structure for storing entity information and metadata.
     """
     entity = {
-        "block_type": block_type,
-        "supported_entity_types": BLOCK_SCHEMA_DATA[block_type].get("supported_entity_types", [])
+        DICT_KEYS["ENTITY_BLOCK_TYPE"]: block_type,
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: BLOCK_SCHEMA_DATA[block_type].get(DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"], [])
     }
-    fields = BLOCK_SCHEMA_DATA[block_type]["fields"]
+    fields = BLOCK_SCHEMA_DATA[block_type][DICT_KEYS["ENTITY_BLOCK_FIELDS"]]
 
     for field in fields:
         # Copy each configured field from the submitted form.
         entity[field] = form_data.get(field)
-        if field == "device" and form_data.get(field) != "None":
+        if field == DICT_KEYS["DEVICE_ID"] and form_data.get(field) != "None":
             # Persist selected devices by ID instead of display name.
             entity[field] = device_names.get(form_data.get(field))
 
@@ -147,7 +147,7 @@ def gen_entity_dict(block_type: str, form_data: dict[str, Any], device_names: di
 def _redact_device(device: dict[str, Any]) -> dict[str, Any]:
     # Return a copy so logging/debug views never mutate stored config data.
     redacted = copy.deepcopy(device)
-    auth = redacted.get("connection_info", {}).get("auth")
+    auth = redacted.get(DICT_KEYS["DEVICE_CONNECTION_INFO"], {}).get(DICT_KEYS["DEVICE_CONNECTION_INFO_AUTH"])
     if auth:
         auth[DICT_KEYS["USER"]] = "***"
         auth[DICT_KEYS["PASS"]] = "***"

@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Wednesday, April 15th 2026, 10:12:08 PM                                                               #
+# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -40,8 +40,26 @@ DICT_KEYS = {
     "PASS": "password",
     "DEVICE_INFO": "device_info",
     "DEVICES": "devices",
-    "ENTITIES": "entities"
+    "DEVICE_ITEMS": "items",
+    "DEVICE_ID": "device_id",
+    "DEVICE_CONNECTION_INFO": "connection_info",
+    "DEVICE_CONNECTION_INFO_AUTH": "auth",
+    "PRIMARY_DEVICE": "primary",
+    "ENTITIES": "entities",
+    "ENTITY_DEVICE_IDENTIFIERS": "identifiers",
+    "CONFIG_ENTRY": "entry",
+    "EDIT_ID": "edit_id",
+    "ENTITY_BLOCK_TYPE": "block_type",
+    "ENTITY_BLOCK_FIELDS": "fields",
+    "ENTITY_BLOCK_SUPPORTED_TYPES": "supported_entity_types",
+    "ENTITY_BLOCK_INSTANCE_TAG": "instance_tag",
+    "ENTITY_BLOCK_CHANNEL": "channel",
+    "ENTITY_BLOCK_SUBSCRIBE": "subscribe"
 }
+
+STEP_IDS = {}
+ERROR_MSG = {}
+ABORT_MSG = {}
 
 CONFIG_MODES = {
     "INIT": "init",
@@ -49,30 +67,30 @@ CONFIG_MODES = {
 }
 
 DEFAULT_DEVICES = {
-    "items": {},
-    "primary": None
+    DICT_KEYS["DEVICE_ITEMS"]: {},
+    DICT_KEYS["PRIMARY_DEVICE"]: None
 }
 
 SCHEMA_FIELDS = {
-    "instance_tag": {
+    DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"]: {
         "label": "Instance Tag",
         "type": "string",
         "default": "",
         "required": True
     },
-    "channel": {
+    DICT_KEYS["ENTITY_BLOCK_CHANNEL"]: {
         "label": "Channel",
         "type": "integer",
         "default": 1,
         "required": True
     },
-    "subscribe": {
+    DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]: {
         "label": "Live Updates",
         "type": "boolean",
         "default": False,
         "required": True
     },
-    "device": {
+    DICT_KEYS["DEVICE_ID"]: {
         "label": "Device",
         "type": "device_list",
         "default": None,
@@ -83,8 +101,8 @@ SCHEMA_FIELDS = {
 BLOCK_SCHEMA_DATA = {
     "level": {
         "label": "Level",
-        "supported_entity_types": ["media_player", "button"],
-        "fields": ["device", "instance_tag", "channel", "subscribe"]
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["media_player"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
     }
 }
 

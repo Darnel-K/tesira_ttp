@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Thursday, April 16th 2026, 12:09:00 AM                                                                #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Thursday, April 16th 2026, 11:33:39 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -50,8 +50,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # Build entities from the dynamic options structure by block type.
     for entity in entities:
-        if "media_player" in entity["supported_entity_types"]:
-            match entity["block_type"]:
+        if "media_player" in entity[DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]]:
+            match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
                 case "level":
                     entities_list.append(TesiraLevelBlock(hub=hub, hubkey=hubkey, entity=entity))
 
@@ -72,11 +72,11 @@ class TesiraLevelBlock(MediaPlayerEntity):
         self._hub = hub
         self._hubkey = hubkey
         self._entity = entity
-        self._instance_tag = entity.get("instance_tag")
-        self._block_type = entity.get("block_type")
-        self._device_id = entity.get("device")
-        self._channel = int(entity.get("channel"))
-        self._sub = entity.get("subscribe")
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._sub = entity.get(DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"])
         self._attr_name = f"Tesira Level Block - Tag:{self._instance_tag} - Attr:Level - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
         self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_level_{self._channel}".lower()
         self._attr_supported_features = (
@@ -109,7 +109,7 @@ class TesiraLevelBlock(MediaPlayerEntity):
 
     @property
     def device_info(self):
-        return {"identifiers": {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
 
     async def get_block_details(self) -> None:
         # Pull live min/max dB limits to normalize volume values correctly for this block.
