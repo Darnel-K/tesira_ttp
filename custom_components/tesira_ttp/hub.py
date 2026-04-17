@@ -72,6 +72,12 @@ class TesiraHub:
         # Serialize I/O to avoid interleaving command and subscription operations.
         self._lock = asyncio.Lock()
 
+    # @property
+    # async def key(self) -> str:
+    #     device_info = await self.client.device_info()
+    #     device_info = device_info["info"]
+    #     return gen_hub_key(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
+
     @property
     def is_connected(self) -> bool:
         # TesiraClient sets _conn when a transport session is active.
