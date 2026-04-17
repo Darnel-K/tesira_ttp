@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\hub.py                                                                       #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, April 7th 2026, 11:07:07 PM                                                                  #
+# Last Modified: Thursday, April 16th 2026, 11:20:15 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -28,7 +28,7 @@ import asyncio
 import logging
 
 from .tesira_client import TesiraClient
-# from .util import gen_hub_key
+from .const import DEFAULTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,10 +37,10 @@ class TesiraHub:
 
     def __init__(self,
         host: str,
-        username: str = "default",
-        password: str = "",
-        port: int = None,
-        proto: str = "ssh",
+        username: str = DEFAULTS["USER"],
+        password: str = DEFAULTS["PASS"],
+        port: int = DEFAULTS["PORT"],
+        proto: str = DEFAULTS["PROTO"],
         known_hosts=None,
         heartbeat_interval: float = 10.0,
         heartbeat_failure_threshold: int = 3,
@@ -69,6 +69,7 @@ class TesiraHub:
             heartbeat_jitter=heartbeat_jitter,
             safe_mode=safe_mode
         )
+        # Serialize I/O to avoid interleaving command and subscription operations.
         self._lock = asyncio.Lock()
 
     # @property
@@ -79,6 +80,7 @@ class TesiraHub:
 
     @property
     def is_connected(self) -> bool:
+        # TesiraClient sets _conn when a transport session is active.
         if self.client._conn is not None:
             return True
         else:

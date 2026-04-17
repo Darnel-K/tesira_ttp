@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Sunday, April 12th 2026, 10:09:23 PM                                                                  #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -31,7 +31,7 @@ import homeassistant.helpers.config_validation as cv
 
 from typing import Any
 from homeassistant.helpers.selector import selector
-from .const import DOMAIN, DICT_KEYS, DEFAULTS
+from .const import DOMAIN, DICT_KEYS, DEFAULTS, BLOCK_SCHEMA_DATA, SCHEMA_FIELDS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,15 +62,44 @@ def _device_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
         }
     )
 
-def _control_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+def _entity_schema(defaults: dict[str, Any] | None = None, block_type: str | None = None, device_names: dict[str, str] | None = None) -> vol.Schema:
     d = defaults or {}
-    return vol.Schema(
-        {
-            vol.Optional(DICT_KEYS["CONTROL_NAME"], default=d.get(DICT_KEYS["CONTROL_NAME"], DEFAULTS["CONTROL_NAME"])): cv.string,
-            vol.Required(DICT_KEYS["INSTANCE_TAG"], default=d.get(DICT_KEYS["INSTANCE_TAG"], "volume")): cv.string,
-            vol.Optional(DICT_KEYS["CHANNEL"], default=int(d.get(DICT_KEYS["CHANNEL"], DEFAULTS["CHANNEL"]))): vol.Coerce(int),
-            vol.Optional(DICT_KEYS["MIN_DB"], default=float(d.get(DICT_KEYS["MIN_DB"], DEFAULTS["MIN_DB"]))): vol.Coerce(float),
-            vol.Optional(DICT_KEYS["MAX_DB"], default=float(d.get(DICT_KEYS["MAX_DB"], DEFAULTS["MAX_DB"]))): vol.Coerce(float),
-            vol.Optional(DICT_KEYS["STEP_DB"], default=float(d.get(DICT_KEYS["STEP_DB"], DEFAULTS["STEP_DB"]))): vol.Coerce(float),
-        }
-    )
+    if block_type not in BLOCK_SCHEMA_DATA:
+        raise ValueError(f"Unsupported block type: {block_type}")
+
+    block_data = BLOCK_SCHEMA_DATA[block_type]
+    fields = block_data.get("fields", [])
+    schema_dict = {}
+
+    # Convert declarative field metadata into voluptuous validators at runtime.
+    for field in fields:
+        field_info = SCHEMA_FIELDS.get(field)
+        default_value = d.get(field, field_info.get("default", None))
+        required = field_info.get("required", False)
+        field_type = field_info.get("type", "string")
+
+        if field_type == "string":
+            validator = cv.string
+        elif field_type == "integer":
+            validator = vol.Coerce(int)
+        elif field_type == "float":
+            validator = vol.Coerce(float)
+        elif field_type == "boolean":
+            validator = vol.Coerce(bool)
+        elif field_type == "port":
+            validator = cv.port
+        elif field_type == "device_list":
+            if device_names is None:
+                raise ValueError("device_names must be provided for device_list fields")
+            keys = list(device_names.keys())
+            keys.insert(0, "None")  # Allow for no device selection
+            validator = vol.In(list(keys))
+        else:
+            raise ValueError(f"Unsupported field type: {field_type}")
+
+        if required:
+            schema_dict[vol.Required(field, default=default_value)] = validator
+        else:
+            schema_dict[vol.Optional(field, default=default_value)] = validator
+
+    return vol.Schema(schema_dict)

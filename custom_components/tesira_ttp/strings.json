@@ -81,18 +81,6 @@
                 "data": {
                     "select": "Select a device to change to primary"
                 }
-            },
-            "control": {
-                "title": "Add first control",
-                "description": "Add the first level control (instance tag + channel). You can add more later in Configure.",
-                "data": {
-                    "name": "Name",
-                    "instance_tag": "Instance tag",
-                    "channel": "Channel",
-                    "min_db": "Min dB",
-                    "max_db": "Max dB",
-                    "step_db": "Step dB"
-                }
             }
         },
         "error": {
@@ -122,9 +110,15 @@
             "init": {
                 "title": "Configure Entities",
                 "menu_options": {
-                    "add_entity": "Add Entity",
+                    "select_type": "Add Entity",
                     "select_entity": "Edit Entity",
                     "remove_entity": "Remove Entity"
+                }
+            },
+            "select_type": {
+                "title": "Select Block Type",
+                "data": {
+                    "select": "Select a block type to add an entity"
                 }
             },
             "add_entity": {
@@ -133,31 +127,35 @@
                     "name": "Name",
                     "instance_tag": "Instance tag",
                     "channel": "Channel",
-                    "min_db": "Min dB",
-                    "max_db": "Max dB",
-                    "step_db": "Step dB"
+                    "subscribe": "Enable Live Updates (Recommended)",
+                    "device_id": "Select device to associate with this entity (optional)"
                 }
             },
             "select_entity": {
-                "title": "Select Entity"
+                "title": "Select Entity",
+                "data": {
+                    "select": "Select an entity to edit"
+                }
             },
             "edit_entity": {
                 "title": "Edit Entity",
                 "data": {
-                    "name": "Name",
                     "instance_tag": "Instance tag",
                     "channel": "Channel",
-                    "min_db": "Min dB",
-                    "max_db": "Max dB",
-                    "step_db": "Step dB"
+                    "subscribe": "Enable Live Updates (Recommended)",
+                    "device_id": "Select device to associate with this entity (optional)"
                 }
             },
             "remove_entity": {
-                "title": "Remove Entities"
+                "title": "Remove Entities",
+                "data": {
+                    "select": "Select entities to remove"
+                }
             }
         },
         "abort": {
-            "no_controls": "No entities are configured."
+            "no_entities": "No entities are configured.",
+            "no_supported_blocks": "No supported block types available. Please raise a feature request to add support for more block types."
         }
     }
 }
