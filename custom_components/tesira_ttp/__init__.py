@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Sunday, March 22nd 2026, 10:04:37 PM                                                                   #
-# Last Modified: Saturday, March 28th 2026, 10:39:51 PM                                                                #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -25,60 +25,83 @@
 from __future__ import annotations
 
 import logging
+import copy
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN, PLATFORMS, CONF_IP, CONF_PORT, CONF_PROTO, CONF_USER, CONF_PASS
+from .const import DOMAIN, PLATFORMS, DICT_KEYS, DEFAULTS
 from .hub import TesiraHub
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_HUBS = "hubs"
-DATA_ENTRY_HUBKEY = "entry_hubkey"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    # Keep integration state in hass.data so all platforms can share hubs and lookup keys.
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault(DATA_HUBS, {})
-    hass.data[DOMAIN].setdefault(DATA_ENTRY_HUBKEY, {})
+    hass.data[DOMAIN].setdefault(DICT_KEYS["DATA_HUBS"], {})
+    hass.data[DOMAIN].setdefault(DICT_KEYS["DATA_ENTRY_HUBKEY"], {})
     return True
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    # Options changed (controls added/edited/removed) → reload entities
+    # Reload platforms when options change.
     await hass.config_entries.async_reload(entry.entry_id)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    host = entry.data[CONF_IP]
-    port = entry.data[CONF_PORT]
-    proto = entry.data[CONF_PROTO]
-    user = entry.data.get(CONF_USER)
-    pwrd = entry.data.get(CONF_PASS)
+    # Validate config entry data and create/reuse a hub instance for this entry.
+    devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
+    primary_device_id = devices.get(DICT_KEYS["PRIMARY_DEVICE"])
+    if not primary_device_id or primary_device_id not in devices[DICT_KEYS["DEVICE_ITEMS"]]:
+        _LOGGER.error("Invalid or missing primary device in config entry %s", entry.entry_id)
+        return False
+    primary_device = devices[DICT_KEYS["DEVICE_ITEMS"]][primary_device_id]
+    conn_info = primary_device[DICT_KEYS["DEVICE_CONNECTION_INFO"]]
+    auth_credentials = conn_info.get(DICT_KEYS["DEVICE_CONNECTION_INFO_AUTH"], {})
+    host = conn_info.get(DICT_KEYS["HOST"])
+    port = conn_info.get(DICT_KEYS["PORT"])
+    proto = conn_info.get(DICT_KEYS["PROTO"])
+    user = auth_credentials.get(DICT_KEYS["USER"])
+    pwrd = auth_credentials.get(DICT_KEYS["PASS"])
 
-    hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
-    hubkey = f"{host}:{port}:{proto}"
+    # Hub key is currently tied to entry_id, but we still centralize lifecycle in hass.data.
+    hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]]
+    hubkey = entry.entry_id
     hub = hubs.get(hubkey)
     if hub is None:
+        # No existing hub for this entry, create a new one
         hub = TesiraHub(host=host, port=port, proto=proto, username=user, password=pwrd, safe_mode=True)
         hubs[hubkey] = hub
         _LOGGER.debug("Created Tesira hub for %s", hubkey)
 
-    hass.data[DOMAIN][DATA_ENTRY_HUBKEY][entry.entry_id] = hubkey
+    # Store the hubkey for this entry to manage shared hubs across entries
+    hass.data[DOMAIN][DICT_KEYS["DATA_ENTRY_HUBKEY"]][entry.entry_id] = hubkey
 
+    # Register all configured devices so entities can attach to a stable HA device record.
+    device_registry = dr.async_get(hass)
+    for device_id, device in devices[DICT_KEYS["DEVICE_ITEMS"]].items():
+        device_info = device.get(DICT_KEYS["DEVICE_INFO"], {})
+        device_registry.async_get_or_create(config_entry_id=entry.entry_id, identifiers={(DOMAIN, device_id)}, manufacturer=device_info.get("manufacturer"), model=device_info.get("model"), model_id=device_info.get("model_id"), name=device_info.get('name'), sw_version=device_info.get("sw_version"), hw_version=device_info.get("hw_version"), serial_number=device_info.get("serial_number"))
+
+    # Set up update listener for options changes
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
+# Unload platforms and release hub resources when an entry is removed or disabled.
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    hubkey = hass.data[DOMAIN][DATA_ENTRY_HUBKEY].pop(entry.entry_id, None)
+    # Remove the hubkey for this entry and check if we need to close the hub
+    hubkey = hass.data[DOMAIN][DICT_KEYS["DATA_ENTRY_HUBKEY"]].pop(entry.entry_id, None)
     if hubkey:
-        hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DATA_HUBS]
+        # Check if any other entries still reference this hubkey before disconnecting
+        hubs: dict[str, TesiraHub] = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]]
         # If no other entries reference this hubkey, close it.
-        if hubkey not in hass.data[DOMAIN][DATA_ENTRY_HUBKEY].values():
+        if hubkey not in hass.data[DOMAIN][DICT_KEYS["DATA_ENTRY_HUBKEY"]].values():
             hub = hubs.pop(hubkey, None)
             if hub:
                 await hub.disconnect()

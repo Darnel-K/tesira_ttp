@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Saturday, March 28th 2026, 10:28:26 PM                                                                #
+# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
+# Last Modified: Thursday, April 16th 2026, 11:52:21 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,30 +27,198 @@ from __future__ import annotations
 from homeassistant.const import Platform
 
 DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER]
+PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH]
 
-CONF_IP = "host"
-CONF_PORT = "port"
-CONF_PROTO = "protocol"
-CONF_USER = "username"
-CONF_PASS = "password"
+DICT_KEYS = {
+    "DATA_HUBS": "hubs",
+    "DATA_ENTRY_HUBKEY": "entry_hubkey",
+    "HUB_TITLE": "hub_title",
+    "HOST": "host",
+    "PORT": "port",
+    "PROTO": "protocol",
+    "USER": "username",
+    "PASS": "password",
+    "DEVICE_INFO": "device_info",
+    "DEVICES": "devices",
+    "DEVICE_ITEMS": "items",
+    "DEVICE_ID": "device_id",
+    "DEVICE_CONNECTION_INFO": "connection_info",
+    "DEVICE_CONNECTION_INFO_AUTH": "auth",
+    "PRIMARY_DEVICE": "primary",
+    "ENTITIES": "entities",
+    "ENTITY_DEVICE_IDENTIFIERS": "identifiers",
+    "CONFIG_ENTRY": "entry",
+    "EDIT_ID": "edit_id",
+    "ENTITY_BLOCK_TYPE": "block_type",
+    "ENTITY_BLOCK_FIELDS": "fields",
+    "ENTITY_BLOCK_SUPPORTED_TYPES": "supported_entity_types",
+    "ENTITY_BLOCK_INSTANCE_TAG": "instance_tag",
+    "ENTITY_BLOCK_CHANNEL": "channel",
+    "ENTITY_BLOCK_SUBSCRIBE": "subscribe"
+}
 
-# Controls live in options as a list of dicts
-CONF_CONTROLS = "controls"
+STEP_IDS = {}
+ERROR_MSG = {}
+ABORT_MSG = {}
 
-CONF_CONTROL_NAME = "name"
-CONF_INSTANCE_TAG = "instance_tag"
-CONF_CHANNEL = "channel"
-CONF_MIN_DB = "min_db"
-CONF_MAX_DB = "max_db"
-CONF_STEP_DB = "step_db"
+CONFIG_MODES = {
+    "INIT": "init",
+    "RECONFIGURE": "reconfigure"
+}
 
-DEFAULT_PORT = 22
-DEFAULT_PROTO = "ssh"
-DEFAULT_USER = "default"
-DEFAULT_PASS = ""
-DEFAULT_CONTROL_NAME = "Tesira Volume"
-DEFAULT_CHANNEL = 1
-DEFAULT_MIN_DB = -100.0
-DEFAULT_MAX_DB = 12.0
-DEFAULT_STEP_DB = 0.5
+DEFAULT_DEVICES = {
+    DICT_KEYS["DEVICE_ITEMS"]: {},
+    DICT_KEYS["PRIMARY_DEVICE"]: None
+}
+
+SCHEMA_FIELDS = {
+    DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"]: {
+        "label": "Instance Tag",
+        "type": "string",
+        "default": "",
+        "required": True
+    },
+    DICT_KEYS["ENTITY_BLOCK_CHANNEL"]: {
+        "label": "Channel",
+        "type": "integer",
+        "default": 1,
+        "required": True
+    },
+    DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]: {
+        "label": "Live Updates",
+        "type": "boolean",
+        "default": False,
+        "required": True
+    },
+    DICT_KEYS["DEVICE_ID"]: {
+        "label": "Device",
+        "type": "device_list",
+        "default": None,
+        "required": False
+    }
+}
+
+BLOCK_SCHEMA_DATA = {
+    "level": {
+        "label": "Level",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["media_player"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "logic_state": {
+        "label": "Logic State",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    }
+}
+
+SUPPORTED_BLOCKS = {}
+DEFAULT_ENTITIES = []
+
+# Build selector labels and default entity containers from a single block schema source.
+for block_type, data in BLOCK_SCHEMA_DATA.items():
+    SUPPORTED_BLOCKS[data["label"]] = block_type
+
+# DEFAULT_ENTITIES = {
+#     "preset": [],
+#     "aec_input": [],
+#     "aec_processing": [],
+#     "aec_reference": [],
+#     "anc": [],
+#     "anc_input": [],
+#     "av_input": [],
+#     "av_output": [],
+#     "avb.1_input": [],
+#     "avb.1_output": [],
+#     "attero_tech_input": [],
+#     "attero_tech_output": [],
+#     "bluetooth_control_status": [],
+#     "bluetooth_input": [],
+#     "bluetooth_output": [],
+#     "cobranet_input": [],
+#     "cobranet_output": [],
+#     "dtmf_decode": [],
+#     "dante_input": [],
+#     "dante_mic": [],
+#     "dante_output": [],
+#     "ex-ubt_usb_input": [],
+#     "ex-ubt_usb_output": [],
+#     "input": [],
+#     "lab.gruppen_amplifier": [],
+#     "output": [],
+#     "parle_amplifier": [],
+#     "parle_microphone": [],
+#     "parle_microphone_beam_outs": [],
+#     "poe_amp": [],
+#     "ti_control_status": [],
+#     "ti_receive": [],
+#     "ti_transmit": [],
+#     "tesira_amplifier": [],
+#     "tesiraxel_1200": [],
+#     "usb_input": [],
+#     "usb_output": [],
+#     "voip_control_status": [],
+#     "voip_receive": [],
+#     "voip_transmit": [],
+#     "voltera_amplifier": [],
+#     "paging_control": [],
+#     "paging_zone": [],
+#     "auto_mixer_combiner": [],
+#     "gain_sharing_auto_mixer": [],
+#     "gating_auto_mixer": [],
+#     "matrix_mixer": [],
+#     "room_combiner": [],
+#     "standard_mixer": [],
+#     "feedback_suppressor": [],
+#     "graphic_equalizer": [],
+#     "parametric_equalizer": [],
+#     "all_pass_filter": [],
+#     "fir_filter": [],
+#     "pass_filter": [],
+#     "shelf_filter": [],
+#     "uber_filter": [],
+#     "crossover": [],
+#     "agc": [],
+#     "ai_noise_reduction": [],
+#     "compressor": [],
+#     "ducker": [],
+#     "leveler": [],
+#     "noise_gate": [],
+#     "peak_limiter": [],
+#     "av_router": [],
+#     "router": [],
+#     "source_selector": [],
+#     "delay": [],
+#     "command_string": [],
+#     "dialer": [],
+#     "hd-1": [],
+#     "invert": [],
+#     "level": [],
+#     "mute": [],
+#     "parle_processing": [],
+#     "preset_button": [],
+#     "voltage_control": [],
+#     "audio_meter": [],
+#     "signal_present_meter": [],
+#     "noise_generator": [],
+#     "tone_generator": [],
+#     "flip_flop": [],
+#     "logic_delay": [],
+#     "logic_input": [],
+#     "logic_meter": [],
+#     "logic_output": [],
+#     "logic_pulse": [],
+#     "logic_selector": [],
+#     "logic_sequence": [],
+#     "logic_state": [],
+#     "device": []
+# }
+
+DEFAULTS = {
+    "HOST": "0.0.0.0",
+    "PORT": 22,
+    "PROTO": "ssh",
+    "USER": "default",
+    "PASS": "",
+    "DEVICES": DEFAULT_DEVICES,
+    "ENTITIES": DEFAULT_ENTITIES
+}

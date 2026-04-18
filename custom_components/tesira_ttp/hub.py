@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\hub.py                                                                       #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Thursday, March 26th 2026, 12:25:05 AM                                                                #
+# Last Modified: Thursday, April 16th 2026, 11:20:15 PM                                                                #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -28,6 +28,7 @@ import asyncio
 import logging
 
 from .tesira_client import TesiraClient
+from .const import DEFAULTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,10 +37,10 @@ class TesiraHub:
 
     def __init__(self,
         host: str,
-        username: str = "default",
-        password: str = "",
-        port: int = None,
-        proto: str = "ssh",
+        username: str = DEFAULTS["USER"],
+        password: str = DEFAULTS["PASS"],
+        port: int = DEFAULTS["PORT"],
+        proto: str = DEFAULTS["PROTO"],
         known_hosts=None,
         heartbeat_interval: float = 10.0,
         heartbeat_failure_threshold: int = 3,
@@ -68,11 +69,22 @@ class TesiraHub:
             heartbeat_jitter=heartbeat_jitter,
             safe_mode=safe_mode
         )
+        # Serialize I/O to avoid interleaving command and subscription operations.
         self._lock = asyncio.Lock()
 
+    # @property
+    # async def key(self) -> str:
+    #     device_info = await self.client.device_info()
+    #     device_info = device_info["info"]
+    #     return gen_hub_key(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
+
     @property
-    def key(self) -> str:
-        return f"{self.host}:{self.port}"
+    def is_connected(self) -> bool:
+        # TesiraClient sets _conn when a transport session is active.
+        if self.client._conn is not None:
+            return True
+        else:
+            return False
 
     async def json(self, cmd: str):
         async with self._lock:
