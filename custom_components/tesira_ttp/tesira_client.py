@@ -25,8 +25,10 @@
 from __future__ import annotations
 
 import asyncio
-import asyncssh
-import telnetlib3
+import ctypes
+import importlib
+import sys
+import types
 import json
 import random
 import re
@@ -35,6 +37,68 @@ import logging
 import inspect
 
 _LOGGER = logging.getLogger(__name__)
+
+_ASYNCSSH_MODULE = None
+_ASYNCSSH_IMPORT_ERROR = None
+_TELNETLIB3_MODULE = None
+
+
+async def _get_asyncssh():
+    global _ASYNCSSH_MODULE, _ASYNCSSH_IMPORT_ERROR
+
+    if _ASYNCSSH_MODULE is not None:
+        return _ASYNCSSH_MODULE
+
+    if _ASYNCSSH_IMPORT_ERROR is not None:
+        raise ImportError(f"asyncssh import previously failed: {_ASYNCSSH_IMPORT_ERROR}")
+
+    # Python 3.14 compatibility for asyncssh -> fido2 Windows import path.
+    if not hasattr(ctypes, "HRESULT"):
+        ctypes.HRESULT = ctypes.c_long
+
+    try:
+        _ASYNCSSH_MODULE = await asyncio.to_thread(importlib.import_module, "asyncssh")
+    except Exception as err:
+        err_text = str(err)
+
+        # Some Python 3.14 environments hit fido2's Windows bindings import
+        # path on non-Windows platforms (ctypes lacks WinDLL/HRESULT). Provide
+        # a minimal stub so asyncssh can import without Windows FIDO support.
+        if (
+            isinstance(err, AttributeError)
+            and ("WinDLL" in err_text or "HRESULT" in err_text)
+            and "fido2.client.windows" not in sys.modules
+        ):
+            win_mod = types.ModuleType("fido2.client.windows")
+
+            class WindowsClient:  # pragma: no cover - compatibility shim only
+                @staticmethod
+                def is_available() -> bool:
+                    return False
+
+            win_mod.WindowsClient = WindowsClient
+            sys.modules["fido2.client.windows"] = win_mod
+
+            try:
+                _ASYNCSSH_MODULE = await asyncio.to_thread(importlib.import_module, "asyncssh")
+            except Exception as retry_err:
+                _ASYNCSSH_IMPORT_ERROR = retry_err
+                raise
+            return _ASYNCSSH_MODULE
+
+        _ASYNCSSH_IMPORT_ERROR = err
+        raise
+
+    return _ASYNCSSH_MODULE
+
+
+async def _get_telnetlib3():
+    global _TELNETLIB3_MODULE
+
+    if _TELNETLIB3_MODULE is None:
+        _TELNETLIB3_MODULE = await asyncio.to_thread(importlib.import_module, "telnetlib3")
+
+    return _TELNETLIB3_MODULE
 
 # Tesira client (SSH + Telnet).
 class TesiraClient:
@@ -108,6 +172,7 @@ class TesiraClient:
         # Subscription system
         self._subscriptions = {}
         self._event_callback = None
+        self._ssh_session_cls = None
     # Telnet session internals.
     class _TelnetSession:
         def __init__(self, parent):
@@ -141,9 +206,8 @@ class TesiraClient:
             self.complete.set()
 
     # SSH session internals.
-    class _SSHSession(asyncssh.SSHClientSession):
+    class _SSHSessionBase:
         def __init__(self, parent):
-            super().__init__()
             self.parent = parent
             self.buffer = ""
             self.complete = asyncio.Event()
@@ -203,6 +267,21 @@ class TesiraClient:
 
                 # Open SSH transport.
                 if self.proto == "ssh":
+                    asyncssh = await _get_asyncssh()
+
+                    if self._ssh_session_cls is None:
+                        class _RuntimeSSHSession(asyncssh.SSHClientSession, TesiraClient._SSHSessionBase):
+                            def __init__(self, parent):
+                                asyncssh.SSHClientSession.__init__(self)
+                                TesiraClient._SSHSessionBase.__init__(self, parent)
+
+                            def data_received(self, data, datatype):
+                                TesiraClient._SSHSessionBase.data_received(self, data, datatype)
+
+                            def connection_lost(self, exc):
+                                TesiraClient._SSHSessionBase.connection_lost(self, exc)
+
+                        self._ssh_session_cls = _RuntimeSSHSession
 
                     self._conn = await asyncssh.connect(
                         self.host,
@@ -214,7 +293,7 @@ class TesiraClient:
 
                     # Create a fresh session and keep a reference to it.
                     def factory():
-                        sess = TesiraClient._SSHSession(self)
+                        sess = self._ssh_session_cls(self)
                         self._session = sess
                         return sess
 
@@ -223,6 +302,8 @@ class TesiraClient:
 
                 # Open Telnet transport.
                 else:
+                    telnetlib3 = await _get_telnetlib3()
+
                     self._reader, self._writer = await telnetlib3.open_connection(
                         self.host,
                         self.port,
@@ -246,10 +327,16 @@ class TesiraClient:
                 await self._resubscribe_all()
 
                 break
-            except asyncssh.PermissionDenied as e:
-                _LOGGER.error("[NET] Invalid credentials: %s", e)
-                raise self.InvalidCredentials(f"Invalid credentials: {e}")
             except Exception as e:
+                if self.proto == "ssh":
+                    try:
+                        asyncssh = await _get_asyncssh()
+                        if isinstance(e, asyncssh.PermissionDenied):
+                            _LOGGER.error("[NET] Invalid credentials: %s", e)
+                            raise self.InvalidCredentials(f"Invalid credentials: {e}")
+                    except ImportError:
+                        pass
+
                 _LOGGER.error("[NET] Connection attempt (%s) failed (%s), retrying in %s s", attempt, e, backoff)
                 if attempt == max_retries:
                     _LOGGER.error(f"[NET] Maximum connection attempts reached: {e}")
