@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client.py                                                             #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Monday, March 30th 2026, 3:26:17 PM                                                                   #
+# Last Modified: Monday, April 13th 2026, 12:11:16 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -25,8 +25,10 @@
 from __future__ import annotations
 
 import asyncio
-import asyncssh
-import telnetlib3
+import ctypes
+import importlib
+import sys
+import types
 import json
 import random
 import re
@@ -36,10 +38,72 @@ import inspect
 
 _LOGGER = logging.getLogger(__name__)
 
-# =====================================================================
-# Tesira Client (SSH + TELNET)
-# =====================================================================
+_ASYNCSSH_MODULE = None
+_ASYNCSSH_IMPORT_ERROR = None
+_TELNETLIB3_MODULE = None
+
+
+async def _get_asyncssh():
+    global _ASYNCSSH_MODULE, _ASYNCSSH_IMPORT_ERROR
+
+    if _ASYNCSSH_MODULE is not None:
+        return _ASYNCSSH_MODULE
+
+    if _ASYNCSSH_IMPORT_ERROR is not None:
+        raise ImportError(f"asyncssh import previously failed: {_ASYNCSSH_IMPORT_ERROR}")
+
+    # Python 3.14 compatibility for asyncssh -> fido2 Windows import path.
+    if not hasattr(ctypes, "HRESULT"):
+        ctypes.HRESULT = ctypes.c_long
+
+    try:
+        _ASYNCSSH_MODULE = await asyncio.to_thread(importlib.import_module, "asyncssh")
+    except Exception as err:
+        err_text = str(err)
+
+        # Some Python 3.14 environments hit fido2's Windows bindings import
+        # path on non-Windows platforms (ctypes lacks WinDLL/HRESULT). Provide
+        # a minimal stub so asyncssh can import without Windows FIDO support.
+        if (
+            isinstance(err, AttributeError)
+            and ("WinDLL" in err_text or "HRESULT" in err_text)
+            and "fido2.client.windows" not in sys.modules
+        ):
+            win_mod = types.ModuleType("fido2.client.windows")
+
+            class WindowsClient:  # pragma: no cover - compatibility shim only
+                @staticmethod
+                def is_available() -> bool:
+                    return False
+
+            win_mod.WindowsClient = WindowsClient
+            sys.modules["fido2.client.windows"] = win_mod
+
+            try:
+                _ASYNCSSH_MODULE = await asyncio.to_thread(importlib.import_module, "asyncssh")
+            except Exception as retry_err:
+                _ASYNCSSH_IMPORT_ERROR = retry_err
+                raise
+            return _ASYNCSSH_MODULE
+
+        _ASYNCSSH_IMPORT_ERROR = err
+        raise
+
+    return _ASYNCSSH_MODULE
+
+
+async def _get_telnetlib3():
+    global _TELNETLIB3_MODULE
+
+    if _TELNETLIB3_MODULE is None:
+        _TELNETLIB3_MODULE = await asyncio.to_thread(importlib.import_module, "telnetlib3")
+
+    return _TELNETLIB3_MODULE
+
+# Tesira client (SSH + Telnet).
 class TesiraClient:
+    """Tesira transport client supporting SSH and Telnet."""
+
     END_TOKENS = ["+OK", "-ERR"]
     ALLOWED_PROTOCOLS = {"ssh", "telnet"}
 
@@ -58,9 +122,7 @@ class TesiraClient:
 
         safe_mode=False
     ):
-        # -----------------------------------------------------------------
-        # Protocol validation
-        # -----------------------------------------------------------------
+        # Validate protocol and apply default ports.
         proto = proto.lower().strip()
         if proto not in self.ALLOWED_PROTOCOLS:
             raise self.ProtocolError(f"Unsupported protocol '{proto}'. Allowed: {self.ALLOWED_PROTOCOLS}")
@@ -110,30 +172,32 @@ class TesiraClient:
         # Subscription system
         self._subscriptions = {}
         self._event_callback = None
-
-
-    # =====================================================================
-    # INTERNAL TELNET SESSION
-    # =====================================================================
+        self._ssh_session_cls = None
+    # Telnet session internals.
     class _TelnetSession:
         def __init__(self, parent):
             self.parent = parent
             self.buffer = ""
             self.complete = asyncio.Event()
 
+            # Track response framing and the last receive timestamp.
+            self.ok_seen = False
+            self._last_rx = asyncio.get_event_loop().time()
+
         def data_received(self, data, datatype=None):
             if not data:
                 return
 
             self.buffer += data
+            self._last_rx = asyncio.get_event_loop().time()
+
             _LOGGER.debug("[RX/TELNET] %s", repr(data))
 
-            # Detect +OK or -ERR
-            if "+OK" in self.buffer or "-ERR" in self.buffer:
+            if "+OK" in data or "-ERR" in data:
+                self.ok_seen = True
                 self.complete.set()
 
-            # Publish-token events
-            for line in self.buffer.splitlines():
+            for line in data.splitlines():
                 if line.strip().startswith("! "):
                     self.parent._handle_publish_event(line.strip())
 
@@ -141,25 +205,32 @@ class TesiraClient:
             _LOGGER.warning("[TELNET] Connection lost.")
             self.complete.set()
 
-
-    # =====================================================================
-    # INTERNAL SSH SESSION
-    # =====================================================================
-    class _SSHSession(asyncssh.SSHClientSession):
+    # SSH session internals.
+    class _SSHSessionBase:
         def __init__(self, parent):
-            super().__init__()
             self.parent = parent
             self.buffer = ""
             self.complete = asyncio.Event()
 
+            # Track response framing and the last receive timestamp.
+            self.ok_seen = False
+            self._last_rx = asyncio.get_event_loop().time()
+
         def data_received(self, data, datatype):
+            if not data:
+                return
+
             self.buffer += data
+            self._last_rx = asyncio.get_event_loop().time()
 
             _LOGGER.debug("[RX/SSH] %s", repr(data))
 
-            if "+OK" in self.buffer or "-ERR" in self.buffer:
+            # Mark response start when a status token appears.
+            if "+OK" in data or "-ERR" in data:
+                self.ok_seen = True
                 self.complete.set()
 
+            # Route subscription publish events.
             for line in data.splitlines():
                 if line.strip().startswith("! "):
                     self.parent._handle_publish_event(line.strip())
@@ -168,10 +239,7 @@ class TesiraClient:
             _LOGGER.warning("[SSH] Connection lost")
             self.complete.set()
 
-
-    # =====================================================================
-    # TELNET READER TASK
-    # =====================================================================
+    # Background Telnet reader.
     async def _telnet_reader_task(self):
         try:
             async for data in self._reader:
@@ -183,11 +251,7 @@ class TesiraClient:
             _LOGGER.debug("[TELNET] Reader task cancelled")
         except Exception as e:
             _LOGGER.error("[TELNET] Reader task crashed: %s", e)
-
-
-    # =====================================================================
-    # CONNECT (SSH + TELNET)
-    # =====================================================================
+    # Connect via SSH or Telnet with retry/backoff.
     async def connect(self, max_retries=5):
         if self._conn:
             return
@@ -201,10 +265,23 @@ class TesiraClient:
                 _LOGGER.debug("[NET] Connecting via %s to %s:%s",
                             self.proto.upper(), self.host, self.port)
 
-                # ---------------------------------------------------------
-                # SSH CONNECTION
-                # ---------------------------------------------------------
+                # Open SSH transport.
                 if self.proto == "ssh":
+                    asyncssh = await _get_asyncssh()
+
+                    if self._ssh_session_cls is None:
+                        class _RuntimeSSHSession(asyncssh.SSHClientSession, TesiraClient._SSHSessionBase):
+                            def __init__(self, parent):
+                                asyncssh.SSHClientSession.__init__(self)
+                                TesiraClient._SSHSessionBase.__init__(self, parent)
+
+                            def data_received(self, data, datatype):
+                                TesiraClient._SSHSessionBase.data_received(self, data, datatype)
+
+                            def connection_lost(self, exc):
+                                TesiraClient._SSHSessionBase.connection_lost(self, exc)
+
+                        self._ssh_session_cls = _RuntimeSSHSession
 
                     self._conn = await asyncssh.connect(
                         self.host,
@@ -214,19 +291,19 @@ class TesiraClient:
                         known_hosts=self.known_hosts,
                     )
 
-                    # Factory creates NEW session instance and stores it
+                    # Create a fresh session and keep a reference to it.
                     def factory():
-                        sess = TesiraClient._SSHSession(self)
+                        sess = self._ssh_session_cls(self)
                         self._session = sess
                         return sess
 
                     self._chan, _ = await self._conn.create_session(factory, term_type="vt100")
                     self._chan.write("\r\n")
 
-                # ---------------------------------------------------------
-                # TELNET CONNECTION
-                # ---------------------------------------------------------
+                # Open Telnet transport.
                 else:
+                    telnetlib3 = await _get_telnetlib3()
+
                     self._reader, self._writer = await telnetlib3.open_connection(
                         self.host,
                         self.port,
@@ -234,36 +311,38 @@ class TesiraClient:
                     )
 
                     self._session = TesiraClient._TelnetSession(self)
-                    self._conn = True  # sentinel indicating connected
+                    self._conn = True  # Sentinel indicating an active Telnet session.
 
-                    # Background reader
+                    # Run Telnet reads in the background.
                     self._telnet_reader_future = asyncio.create_task(self._telnet_reader_task())
 
                     self._writer.write("\r\n")
 
                 _LOGGER.debug("[NET] Connected")
 
-                # Start heartbeat once
+                # Start heartbeat once per active connection lifecycle.
                 if self._heartbeat_task is None:
                     self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
                 await self._resubscribe_all()
 
                 break
-            except asyncssh.PermissionDenied as e:
-                _LOGGER.error("[NET] Invalid credentials: %s", e)
-                raise self.InvalidCredentials(f"Invalid credentials: {e}")
             except Exception as e:
+                if self.proto == "ssh":
+                    try:
+                        asyncssh = await _get_asyncssh()
+                        if isinstance(e, asyncssh.PermissionDenied):
+                            _LOGGER.error("[NET] Invalid credentials: %s", e)
+                            raise self.InvalidCredentials(f"Invalid credentials: {e}")
+                    except ImportError:
+                        pass
+
                 _LOGGER.error("[NET] Connection attempt (%s) failed (%s), retrying in %s s", attempt, e, backoff)
                 if attempt == max_retries:
                     _LOGGER.error(f"[NET] Maximum connection attempts reached: {e}")
                     raise ConnectionError(f"Maximum connection attempts reached: {e}")
                 await asyncio.sleep(backoff)
-
-
-    # =====================================================================
-    # DISCONNECT
-    # =====================================================================
+    # Close active transport and stop heartbeat.
     async def disconnect(self):
         if self._telnet_reader_future:
             self._telnet_reader_future.cancel()
@@ -288,45 +367,59 @@ class TesiraClient:
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
             self._heartbeat_task = None
-
-
-    # =====================================================================
-    # INTERNAL SEND
-    # =====================================================================
+    # Write raw text to the active transport.
     async def _send(self, text: str):
         if self.proto == "ssh":
             self._chan.write(text)
         else:
             self._writer.write(text)
-
-
-    # =====================================================================
-    # COMMAND ENGINE (SSH + TELNET, fragmentation safe)
-    # =====================================================================
-    async def command(self, cmd: str, timeout=5.0):
+    # Run a command and parse the final +OK/-ERR response token.
+    async def command(self, cmd: str, timeout: float = 5.0):
         async with self._lock:
             await self.connect()
 
-            # reset
+            # Reset session state before issuing the command.
             self._session.buffer = ""
             self._session.complete.clear()
+            self._session.ok_seen = False
+            self._session._last_rx = asyncio.get_event_loop().time()
 
             _LOGGER.debug("[TX] %s", cmd)
 
             await self._send(cmd + "\r\n")
 
+            # Wait until a response token (+OK/-ERR) is observed.
             try:
                 await asyncio.wait_for(self._session.complete.wait(), timeout)
             except asyncio.TimeoutError:
-                raise self.TimeoutError("Timeout waiting for +OK or -ERR", raw=self._session.buffer, cmd=cmd)
+                raise self.TimeoutError(
+                    "Timeout waiting for +OK or -ERR",
+                    raw=self._session.buffer,
+                    cmd=cmd,
+                )
 
+            # Add a short tail wait so fragmented payloads can finish arriving.
+            IDLE_GRACE = 0.15  # seconds; suitable for multi-kB responses
+
+            while True:
+                await asyncio.sleep(IDLE_GRACE)
+                now = asyncio.get_event_loop().time()
+                if now - self._session._last_rx >= IDLE_GRACE:
+                    break
             raw = self._session.buffer.strip()
             lines = [l.strip() for l in raw.splitlines()]
 
-            final = next((l for l in lines if l.startswith("+OK") or l.startswith("-ERR")), None)
+            final = next(
+                (l for l in lines if l.startswith("+OK") or l.startswith("-ERR")),
+                None,
+            )
 
             if not final:
-                raise self.CommandError("No +OK/-ERR returned", raw=raw, cmd=cmd)
+                raise self.CommandError(
+                    "No +OK/-ERR returned",
+                    raw=raw,
+                    cmd=cmd,
+                )
 
             if final.startswith("-ERR"):
                 if self.safe_mode:
@@ -334,11 +427,7 @@ class TesiraClient:
                 raise self.CommandError(final, raw=raw, cmd=cmd)
 
             return final
-
-
-    # =====================================================================
-    # JSON PARSER
-    # =====================================================================
+    # Parse a Tesira +OK payload into JSON-like data.
     async def json(self, cmd: str):
         raw = await self.command(cmd)
 
@@ -354,21 +443,28 @@ class TesiraClient:
 
         payload = re.sub(r"\[([^\[\]]+)\]", fix_array, payload)
 
-        # Insert commas
+        # Insert commas between values and the next quoted key
+        payload = re.sub(r'([A-Za-z0-9_"\}\]])\s+"', r'\1, "', payload)
+
+        # Insert commas between quoted fields
         payload = re.sub(r'"\s+"', '", "', payload)
 
+        # Wrap in object if required
         if not payload.startswith("{"):
             payload = "{" + payload + "}"
+
+        # Quote unquoted enum literals
+        payload = re.sub(
+            r':([A-Z_][A-Z0-9_]*)\b(?!")',
+            r':"\1"',
+            payload
+        )
 
         try:
             return json.loads(payload)
         except Exception as e:
             raise self.JSONParseError(f"JSON parsing failed: {e}", raw=payload, cmd=cmd)
-
-
-    # =====================================================================
-    # HEARTBEAT LOOP
-    # =====================================================================
+    # Periodic health check that disconnects after repeated failures.
     async def _heartbeat_loop(self):
         while True:
             interval = self._heartbeat_interval + random.uniform(
@@ -388,11 +484,7 @@ class TesiraClient:
 
                 if self._heartbeat_failures >= self._heartbeat_failure_threshold:
                     await self.disconnect()
-
-
-    # =====================================================================
-    # SUBSCRIBE API
-    # =====================================================================
+    # Subscription helpers.
     async def subscribe(self, object_type, attribute, index, token, interval_ms, callback):
         cmd = f"{object_type} subscribe {attribute} {index} {token} {interval_ms}"
         await self.command(cmd)
@@ -427,9 +519,7 @@ class TesiraClient:
             except Exception as e:
                 _LOGGER.error("[SUB ERROR] %s", e)
 
-    # =====================================================================
-    # PUBLISH-EVENT ROUTER
-    # =====================================================================
+    # Route publish events to token and global callbacks.
     def _handle_publish_event(self, line: str):
         pairs = re.findall(r'"(\w+)":"?([^"\s]+)"?', line)
 
@@ -466,11 +556,7 @@ class TesiraClient:
                     cb(data)
             except Exception as e:
                 _LOGGER.error("[EVENT ERROR global] %s", e)
-
-
-    # =====================================================================
-    # Helpers
-    # =====================================================================
+    # Helper methods.
     async def ping(self):
         start = time.perf_counter()
         await self.command("DEVICE get deviceInfo")
@@ -498,9 +584,7 @@ class TesiraClient:
     async def queue(self, cmd: str):
         return await self.command(cmd)
 
-    # =====================================================================
-    # Exceptions
-    # =====================================================================
+    # Custom exception types.
     class CommandError(Exception):
         """Represents a Tesira TTP -ERR response."""
         def __init__(self, message, raw=None, cmd=None):
