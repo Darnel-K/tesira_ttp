@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Thursday, April 16th 2026, 11:52:21 PM                                                                #
+# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
+# Last Modified: Saturday, May 2nd 2026, 10:40:35 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -40,6 +40,7 @@ DICT_KEYS = {
     "PASS": "password",
     "DEVICE_INFO": "device_info",
     "DEVICES": "devices",
+    "CREDENTIALS": "credentials",
     "DEVICE_ITEMS": "items",
     "DEVICE_ID": "device_id",
     "DEVICE_CONNECTION_INFO": "connection_info",
@@ -113,6 +114,7 @@ BLOCK_SCHEMA_DATA = {
 
 SUPPORTED_BLOCKS = {}
 DEFAULT_ENTITIES = []
+DEFAULT_CREDENTIALS = {}
 
 # Build selector labels and default entity containers from a single block schema source.
 for block_type, data in BLOCK_SCHEMA_DATA.items():
@@ -220,5 +222,6 @@ DEFAULTS = {
     "USER": "default",
     "PASS": "",
     "DEVICES": DEFAULT_DEVICES,
-    "ENTITIES": DEFAULT_ENTITIES
+    "ENTITIES": DEFAULT_ENTITIES,
+    "CREDENTIALS": DEFAULT_CREDENTIALS
 }

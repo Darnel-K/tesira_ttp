@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\util.py                                                                      #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Sunday, May 3rd 2026, 1:16:50 AM                                                                      #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,7 +27,7 @@
 from __future__ import annotations
 
 from typing import Dict, Any
-from .const import DOMAIN, DICT_KEYS, DEFAULTS, BLOCK_SCHEMA_DATA
+from .const import DICT_KEYS, DEFAULTS, BLOCK_SCHEMA_DATA
 
 import base64
 import json
@@ -39,6 +39,16 @@ def _devices(entry: dict[Any, Any]) -> dict[str, Any]:
         return copy.deepcopy(DEFAULTS["DEVICES"])
 
     return copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
+
+def _credentials(entry: dict[Any, Any], device_id: str | None = None) -> dict[str, Any]:
+    """Return a copy of the credentials dict from the config entry data, or defaults if not available"""
+    if entry is None:
+        return copy.deepcopy(DEFAULTS["CREDENTIALS"])
+
+    credentials = copy.deepcopy(entry.data.get(DICT_KEYS["CREDENTIALS"], DEFAULTS["CREDENTIALS"]))
+    if device_id:
+        return credentials.get(device_id, DEFAULTS["CREDENTIALS"])
+    return credentials
 
 def _entities(entry: dict[Any, Any]) -> list[dict[str, Any]]:
     """Return a copy of the entities list from the config entry options, or defaults if not available"""
@@ -101,11 +111,7 @@ def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, devi
         DICT_KEYS["DEVICE_CONNECTION_INFO"]: {
             DICT_KEYS["HOST"]: host,
             DICT_KEYS["PORT"]: port,
-            DICT_KEYS["PROTO"]: proto,
-            DICT_KEYS["DEVICE_CONNECTION_INFO_AUTH"]: {
-                DICT_KEYS["USER"]: user,
-                DICT_KEYS["PASS"]: pwrd
-            }
+            DICT_KEYS["PROTO"]: proto
         },
         DICT_KEYS["DEVICE_INFO"]: {
             "name": f"Biamp - {device_info['deviceModel']} - {host}:{port} - ({device_id[:10]})",
@@ -116,6 +122,18 @@ def gen_device_dict(host: str, port: int, proto: str, user: str, pwrd: str, devi
             "hw_version": device_info["deviceRevision"],
             "serial_number": device_info["serialNumber"]
         }
+    }
+
+def gen_credential_dict(user: str, pwrd: str) -> dict[str, Any]:
+    """
+    Generate a dictionary for storing authentication credentials.
+
+    Returns:
+        A dictionary with the structure for storing username and password.
+    """
+    return {
+        DICT_KEYS["USER"]: user,
+        DICT_KEYS["PASS"]: pwrd
     }
 
 def gen_entity_dict(block_type: str, form_data: dict[str, Any], device_names: dict[str, str]) -> dict[str, Any]:
@@ -147,8 +165,8 @@ def gen_entity_dict(block_type: str, form_data: dict[str, Any], device_names: di
 def _redact_device(device: dict[str, Any]) -> dict[str, Any]:
     # Return a copy so logging/debug views never mutate stored config data.
     redacted = copy.deepcopy(device)
-    auth = redacted.get(DICT_KEYS["DEVICE_CONNECTION_INFO"], {}).get(DICT_KEYS["DEVICE_CONNECTION_INFO_AUTH"])
-    if auth:
+    auth = redacted.get(DICT_KEYS["DEVICE_CONNECTION_INFO"], {}).get(DICT_KEYS["DEVICE_CONNECTION_INFO_AUTH"], None)
+    if auth is not None:
         auth[DICT_KEYS["USER"]] = "***"
         auth[DICT_KEYS["PASS"]] = "***"
     return redacted
