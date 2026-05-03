@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Saturday, May 2nd 2026, 11:25:17 PM                                                                   #
+# Created Date: Sunday, May 3rd 2026, 1:12:55 AM                                                                       #
+# Last Modified: Sunday, May 3rd 2026, 1:18:46 AM                                                                      #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -25,16 +25,16 @@
 from __future__ import annotations
 
 import logging
-import copy
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN, PLATFORMS, DICT_KEYS, DEFAULTS
+from .const import DOMAIN, PLATFORMS, DICT_KEYS
 from .hub import TesiraHub
-from .util import _devices, _credentials, VersionMigrations
+from .util import _devices, _credentials
+from .migration import VersionMigrations
 from .config_flow import TesiraTtpConfigFlow
 
 _LOGGER = logging.getLogger(__name__)
