@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Friday, May 8th 2026, 10:36:42 PM                                                                     #
+# Created Date: Monday, April 13th 2026, 12:33:01 AM                                                                   #
+# Last Modified: Saturday, May 9th 2026, 12:14:05 AM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,7 +27,7 @@ from __future__ import annotations
 from homeassistant.const import Platform
 
 DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER]
 
 DICT_KEYS = {
     "DATA_HUBS": "hubs",
@@ -52,10 +52,14 @@ DICT_KEYS = {
     "EDIT_ID": "edit_id",
     "ENTITY_BLOCK_TYPE": "block_type",
     "ENTITY_BLOCK_FIELDS": "fields",
+    "ENTITY_BLOCK_FIELD_OPTIONS": "field_options",
     "ENTITY_BLOCK_SUPPORTED_TYPES": "supported_entity_types",
     "ENTITY_BLOCK_INSTANCE_TAG": "instance_tag",
     "ENTITY_BLOCK_CHANNEL": "channel",
-    "ENTITY_BLOCK_SUBSCRIBE": "subscribe"
+    "ENTITY_BLOCK_SUBSCRIBE": "subscribe",
+    "ENTITY_MIN_VALUE": "min_value",
+    "ENTITY_MAX_VALUE": "max_value",
+    "ENTITY_FIELD_TYPE_OVERRIDE": "field_type_override"
 }
 
 STEP_IDS = {}
@@ -91,6 +95,18 @@ SCHEMA_FIELDS = {
         "default": False,
         "required": True
     },
+    DICT_KEYS["ENTITY_MIN_VALUE"]: {
+        "label": "Minimum Value",
+        "type": "float",
+        "default": 0.0,
+        "required": True
+    },
+    DICT_KEYS["ENTITY_MAX_VALUE"]: {
+        "label": "Maximum Value",
+        "type": "float",
+        "default": 0.0,
+        "required": True
+    },
     DICT_KEYS["DEVICE_ID"]: {
         "label": "Device",
         "type": "device_list",
@@ -114,6 +130,16 @@ BLOCK_SCHEMA_DATA = {
         "label": "Flip Flop",
         DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
         DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "logic_delay": {
+        "label": "Logic Delay",
+        DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
+            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 0, "max": 60000},
+            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 0, "max": 60000},
+            DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"
+        },
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch", "number"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
     }
 }
 
