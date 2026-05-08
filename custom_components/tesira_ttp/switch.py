@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\switch.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Friday, April 17th 2026, 12:22:30 AM                                                                  #
+# Last Modified: Friday, May 8th 2026, 10:45:26 PM                                                                     #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -53,6 +53,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
                 case "logic_state":
                     entities_list.append(TesiraLogicStateBlock(hub=hub, hubkey=hubkey, entity=entity))
+                case "flip_flop":
+                    entities_list.append(TesiraFlipFlopBlock(hub=hub, hubkey=hubkey, entity=entity))
+                case _:
+                    _LOGGER.debug(
+                        "Unsupported switch block type '%s' for entity: %s",
+                        entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"]),
+                        entity,
+                    )
 
 
     # Remove stale switch entities no longer present in the current config.
@@ -65,7 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities_list, update_before_add=True)
 
 class TesiraLogicStateBlock(SwitchEntity):
-    """Expose a Tesira logic block state as a Home Assistant switch entity."""
+    """Expose a Tesira logic state block as a Home Assistant switch entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -110,6 +118,90 @@ class TesiraLogicStateBlock(SwitchEntity):
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
             await self._hub.unsubscribe(f"hass_switch_logic_state_{self._instance_tag}_{self._channel}")
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get state {self._channel}")
+            state = resp["value"]
+            if state is not None:
+                self._attr_is_on = _coerce_bool(state)
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+    async def async_turn_on(self) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} set state {self._channel} true")
+            self._attr_is_on = True
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.debug("Turn on failed for %s: %s", self._attr_unique_id, e)
+
+    async def async_turn_off(self) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} set state {self._channel} false")
+            self._attr_is_on = False
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.debug("Turn off failed for %s: %s", self._attr_unique_id, e)
+
+    async def async_toggle(self) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} toggle {self._channel}")
+            await self.async_update()  # Refresh state after toggle since we don't know the resulting state in advance.
+        except Exception as e:
+            _LOGGER.debug("Toggle failed for %s: %s", self._attr_unique_id, e)
+
+class TesiraFlipFlopBlock(SwitchEntity):
+    """Expose a Tesira flip flop block as a Home Assistant switch entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._sub = entity.get(DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"])
+        self._attr_name = f"Tesira Flip Flop Block - Tag:{self._instance_tag} - Attr:State - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_state_{self._channel}".lower()
+        self._attr_is_on: bool = False
+        self._attr_available = True
+
+        if self._sub:
+            # Subscription mode pushes updates from the DSP, so polling is unnecessary.
+            self._attr_should_poll = False
+        else:
+            self._attr_should_poll = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    def _update_state_from_sub(self, data: dict) -> None:
+        state = data.get("value")
+        if state is not None:
+            self._attr_is_on = _coerce_bool(state)
+            self._attr_available = True
+            self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+        else:
+            _LOGGER.warning("Received subscription update without state value: %s", data)
+
+    async def async_added_to_hass(self) -> None:
+        self._hass = self.hass
+        if self._sub:
+            # Prime state once before starting subscriptions to avoid an empty initial UI state.
+            await self.async_update()
+            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_flip_flop_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._sub:
+            await self._hub.unsubscribe(f"hass_switch_flip_flop_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:
