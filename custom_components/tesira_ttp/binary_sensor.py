@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
+# Created Date: Tuesday, July 7th 2026, 11:50:58 PM                                                                    #
+# Last Modified: Wednesday, July 8th 2026, 12:36:42 AM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -37,21 +37,36 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, DICT_KEYS, DEFAULTS
 from .hub import TesiraHub
+from .util import _coerce_bool
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+    """Set up Tesira binary sensor entities for a config entry."""
+
     hubkey = entry.entry_id
     hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
     devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
     entities = copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
     entities_list = []
 
-    # Placeholder for future block-driven binary sensors from options entities.
-    # for block_type, item_list in entities.items():
-    #     for item in item_list:
-    #         if "binary_sensor" in item[DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]]:
-    #              pass
+    # Build entities from the dynamic options structure by block type.
+    for entity in entities:
+        if "binary_sensor" in entity[DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]]:
+            match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
+                case "logic_meter":
+                    entities_list.append(TesiraLogicMeterBlock(hub=hub, hubkey=hubkey, entity=entity))
+                case "logic_pulse":
+                    entities_list.append(TesiraLogicPulseBlockActive(hub=hub, hubkey=hubkey, entity=entity))
+                case "logic_sequence":
+                    entities_list.append(TesiraLogicSequenceBlockActive(hub=hub, hubkey=hubkey, entity=entity))
+                case _:
+                    _LOGGER.debug(
+                        "Unsupported binary sensor block type '%s' for entity: %s",
+                        entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"]),
+                        entity,
+                    )
 
 
     entities_list.append(TesiraHubConnBinarySensor(hub, hubkey))
@@ -136,3 +151,132 @@ class TesiraHubConnBinarySensor(BinarySensorEntity):
     async def async_update(self):
         # Reflect the client session state managed by TesiraHub/TesiraClient.
         self._attr_is_on = self._hub.is_connected
+
+class TesiraLogicMeterBlock(BinarySensorEntity):
+    """Expose a Tesira logic meter block as a Home Assistant binary sensor entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._sub = entity.get(DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"])
+        self._attr_name = f"Tesira Logic Meter Block - Tag:{self._instance_tag} - Attr:State - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_state_{self._channel}".lower()
+        self._attr_is_on: bool = False
+        self._attr_available = True
+
+        if self._sub:
+            # Subscription mode pushes updates from the DSP, so polling is unnecessary.
+            self._attr_should_poll = False
+        else:
+            self._attr_should_poll = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    def _update_state_from_sub(self, data: dict) -> None:
+        state = data.get("value")
+        if state is not None:
+            self._attr_is_on = _coerce_bool(state)
+            self._attr_available = True
+            self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+        else:
+            _LOGGER.warning("Received subscription update without state value: %s", data)
+
+    async def async_added_to_hass(self) -> None:
+        self._hass = self.hass
+        if self._sub:
+            # Prime state once before starting subscriptions to avoid an empty initial UI state.
+            await self.async_update()
+            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_level_meter_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._sub:
+            await self._hub.unsubscribe(f"hass_switch_level_meter_{self._instance_tag}_{self._channel}")
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get state {self._channel}")
+            state = resp["value"]
+            if state is not None:
+                self._attr_is_on = _coerce_bool(state)
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+class TesiraLogicPulseBlockActive(BinarySensorEntity):
+    """Expose a Tesira logic pulse block (Active) as a Home Assistant binary sensor entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._attr_name = f"Tesira Logic Pulse Block - Tag:{self._instance_tag} - Attr:Active - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_active_{self._channel}".lower()
+        self._attr_is_on: bool = False
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get active {self._channel}")
+            active = resp["value"]
+            if active is not None:
+                self._attr_is_on = _coerce_bool(active)
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse active state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+class TesiraLogicSequenceBlockActive(BinarySensorEntity):
+    """Expose a Tesira logic sequence block (Active) as a Home Assistant binary sensor entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._attr_name = f"Tesira Logic Sequence Block - Tag:{self._instance_tag} - Attr:Active - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_active_{self._channel}".lower()
+        self._attr_is_on: bool = False
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get active {self._channel}")
+            active = resp["value"]
+            if active is not None:
+                self._attr_is_on = _coerce_bool(active)
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse active state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False

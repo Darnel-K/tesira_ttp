@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Saturday, May 2nd 2026, 10:40:35 PM                                                                   #
+# Created Date: Tuesday, July 7th 2026, 11:50:58 PM                                                                    #
+# Last Modified: Wednesday, July 8th 2026, 12:36:42 AM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,7 +27,7 @@ from __future__ import annotations
 from homeassistant.const import Platform
 
 DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.BUTTON]
 
 DICT_KEYS = {
     "DATA_HUBS": "hubs",
@@ -52,10 +52,14 @@ DICT_KEYS = {
     "EDIT_ID": "edit_id",
     "ENTITY_BLOCK_TYPE": "block_type",
     "ENTITY_BLOCK_FIELDS": "fields",
+    "ENTITY_BLOCK_FIELD_OPTIONS": "field_options",
     "ENTITY_BLOCK_SUPPORTED_TYPES": "supported_entity_types",
     "ENTITY_BLOCK_INSTANCE_TAG": "instance_tag",
     "ENTITY_BLOCK_CHANNEL": "channel",
-    "ENTITY_BLOCK_SUBSCRIBE": "subscribe"
+    "ENTITY_BLOCK_SUBSCRIBE": "subscribe",
+    "ENTITY_MIN_VALUE": "min_value",
+    "ENTITY_MAX_VALUE": "max_value",
+    "ENTITY_FIELD_TYPE_OVERRIDE": "field_type_override"
 }
 
 STEP_IDS = {}
@@ -91,6 +95,18 @@ SCHEMA_FIELDS = {
         "default": False,
         "required": True
     },
+    DICT_KEYS["ENTITY_MIN_VALUE"]: {
+        "label": "Minimum Value",
+        "type": "float",
+        "default": 0.0,
+        "required": True
+    },
+    DICT_KEYS["ENTITY_MAX_VALUE"]: {
+        "label": "Maximum Value",
+        "type": "float",
+        "default": 0.0,
+        "required": True
+    },
     DICT_KEYS["DEVICE_ID"]: {
         "label": "Device",
         "type": "device_list",
@@ -109,6 +125,58 @@ BLOCK_SCHEMA_DATA = {
         "label": "Logic State",
         DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
         DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "flip_flop": {
+        "label": "Flip Flop",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "logic_delay": {
+        "label": "Logic Delay",
+        DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
+            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 0, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"},
+            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 0, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
+        },
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch", "number"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
+    },
+    "logic_input": {
+        "label": "Logic Input",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"]]
+    },
+    "logic_meter": {
+        "label": "Logic Meter",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "logic_output": {
+        "label": "Logic Output",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"]]
+    },
+    "logic_selector": {
+        "label": "Logic Selector",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "logic_pulse": {
+        "label": "Logic Pulse",
+        DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
+            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 1, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"},
+            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 1, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
+        },
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor", "switch", "number", "button"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
+    },
+    "logic_sequence": {
+        "label": "Logic Sequence",
+        DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
+            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 1, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"},
+            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 1, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
+        },
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor", "switch", "number", "button"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
     }
 }
 
