@@ -40,6 +40,8 @@ from .hub import TesiraHub
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    """Set up Tesira button entities for a config entry."""
+
     hubkey = entry.entry_id
     hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
     entities = copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
@@ -55,6 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     entities_list.append(TesiraLogicPulseBlockStop(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_sequence":
                     instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+                    # Sequence start/stop operate on the block as a whole rather than a specific channel.
                     if instance_tag in logic_sequence_tags_added:
                         continue
                     logic_sequence_tags_added.add(instance_tag)

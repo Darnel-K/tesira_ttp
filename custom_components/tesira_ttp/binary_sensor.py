@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Wednesday, July 8th 2026, 12:07:19 AM                                                                 #
+# Created Date: Tuesday, July 7th 2026, 11:50:58 PM                                                                    #
+# Last Modified: Wednesday, July 8th 2026, 12:36:42 AM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -43,6 +43,8 @@ from typing import Any
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+    """Set up Tesira binary sensor entities for a config entry."""
+
     hubkey = entry.entry_id
     hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
     devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))

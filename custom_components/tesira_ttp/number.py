@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\number.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Friday, May 8th 2026, 10:59:43 PM                                                                      #
-# Last Modified: Wednesday, July 8th 2026, 12:13:29 AM                                                                 #
+# Created Date: Tuesday, July 7th 2026, 11:50:58 PM                                                                    #
+# Last Modified: Wednesday, July 8th 2026, 12:36:42 AM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -40,6 +40,8 @@ from .hub import TesiraHub
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    """Set up Tesira number entities for a config entry."""
+
     hubkey = entry.entry_id
     hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
     entities = copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
