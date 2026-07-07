@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Monday, April 13th 2026, 12:33:01 AM                                                                   #
-# Last Modified: Saturday, May 9th 2026, 12:14:05 AM                                                                   #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Tuesday, July 7th 2026, 11:03:40 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -140,6 +140,31 @@ BLOCK_SCHEMA_DATA = {
         },
         DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch", "number"],
         DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
+    },
+    "logic_input": {
+        "label": "Logic Input",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"]]
+    },
+    "logic_meter": {
+        "label": "Logic Meter",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "logic_output": {
+        "label": "Logic Output",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"]]
+    },
+    "logic_selector": {
+        "label": "Logic Selector",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "logic_pulse": {
+        "label": "Logic Pulse",
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"]]
     }
 }
 
