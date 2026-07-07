@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\button.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Wednesday, July 8th 2026, 12:00:51 AM                                                                 #
+# Created Date: Tuesday, July 7th 2026, 11:50:58 PM                                                                    #
+# Last Modified: Wednesday, July 8th 2026, 12:17:50 AM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -44,6 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
     entities = copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
     entities_list = []
+    logic_sequence_tags_added: set[str | None] = set()
 
     # Build entities from the dynamic options structure by block type.
     for entity in entities:
@@ -52,6 +53,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 case "logic_pulse":
                     entities_list.append(TesiraLogicPulseBlockStart(hub=hub, hubkey=hubkey, entity=entity))
                     entities_list.append(TesiraLogicPulseBlockStop(hub=hub, hubkey=hubkey, entity=entity))
+                case "logic_sequence":
+                    instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+                    if instance_tag in logic_sequence_tags_added:
+                        continue
+                    logic_sequence_tags_added.add(instance_tag)
+                    entities_list.append(TesiraLogicSequenceBlockStart(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicSequenceBlockStop(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
                         "Unsupported button block type '%s' for entity: %s",
@@ -119,6 +127,60 @@ class TesiraLogicPulseBlockStop(ButtonEntity):
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             await self._hub.json(f"{self._instance_tag} stopPulse {self._channel}")
+        except Exception as e:
+            _LOGGER.debug("Button press failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+class TesiraLogicSequenceBlockStart(ButtonEntity):
+    """Expose a Tesira logic sequence block (Start) as a Home Assistant button entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._attr_name = f"Tesira Logic Sequence Block - Tag:{self._instance_tag} - Attr:Start ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_start".lower()
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_press(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            await self._hub.json(f"{self._instance_tag} startSequence")
+        except Exception as e:
+            _LOGGER.debug("Button press failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+class TesiraLogicSequenceBlockStop(ButtonEntity):
+    """Expose a Tesira logic sequence block (Stop) as a Home Assistant button entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._attr_name = f"Tesira Logic Sequence Block - Tag:{self._instance_tag} - Attr:Stop ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_stop".lower()
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_press(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            await self._hub.json(f"{self._instance_tag} stopSequence")
         except Exception as e:
             _LOGGER.debug("Button press failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False

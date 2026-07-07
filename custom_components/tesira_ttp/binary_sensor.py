@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Friday, May 8th 2026, 10:59:43 PM                                                                      #
-# Last Modified: Tuesday, July 7th 2026, 11:26:25 PM                                                                   #
+# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
+# Last Modified: Wednesday, July 8th 2026, 12:07:19 AM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -56,7 +56,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 case "logic_meter":
                     entities_list.append(TesiraLogicMeterBlock(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_pulse":
-                    entities_list.append(TesiraLogicPulseBlock(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicPulseBlockActive(hub=hub, hubkey=hubkey, entity=entity))
+                case "logic_sequence":
+                    entities_list.append(TesiraLogicSequenceBlockActive(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
                         "Unsupported binary sensor block type '%s' for entity: %s",
@@ -209,8 +211,8 @@ class TesiraLogicMeterBlock(BinarySensorEntity):
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
 
-class TesiraLogicPulseBlock(BinarySensorEntity):
-    """Expose a Tesira logic pulse block as a Home Assistant binary sensor entity."""
+class TesiraLogicPulseBlockActive(BinarySensorEntity):
+    """Expose a Tesira logic pulse block (Active) as a Home Assistant binary sensor entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -221,6 +223,40 @@ class TesiraLogicPulseBlock(BinarySensorEntity):
         self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
         self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
         self._attr_name = f"Tesira Logic Pulse Block - Tag:{self._instance_tag} - Attr:Active - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_active_{self._channel}".lower()
+        self._attr_is_on: bool = False
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get active {self._channel}")
+            active = resp["value"]
+            if active is not None:
+                self._attr_is_on = _coerce_bool(active)
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse active state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+class TesiraLogicSequenceBlockActive(BinarySensorEntity):
+    """Expose a Tesira logic sequence block (Active) as a Home Assistant binary sensor entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._attr_name = f"Tesira Logic Sequence Block - Tag:{self._instance_tag} - Attr:Active - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
         self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_active_{self._channel}".lower()
         self._attr_is_on: bool = False
         self._attr_available = True

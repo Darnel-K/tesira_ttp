@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\number.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Tuesday, July 7th 2026, 11:50:58 PM                                                                    #
-# Last Modified: Tuesday, July 7th 2026, 11:55:24 PM                                                                   #
+# Created Date: Friday, May 8th 2026, 10:59:43 PM                                                                      #
+# Last Modified: Wednesday, July 8th 2026, 12:13:29 AM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -55,7 +55,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 case "logic_pulse":
                     entities_list.append(TesiraLogicPulseBlockOnDuration(hub=hub, hubkey=hubkey, entity=entity))
                     entities_list.append(TesiraLogicPulseBlockOffDuration(hub=hub, hubkey=hubkey, entity=entity))
-                    entities_list.append(TesiraLogicPulseBlockCount(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicPulseBlockPulseCount(hub=hub, hubkey=hubkey, entity=entity))
+                case "logic_sequence":
+                    entities_list.append(TesiraLogicSequenceBlockOnDuration(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicSequenceBlockOffDuration(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicSequenceBlockPulseCount(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
                         "Unsupported number block type '%s' for entity: %s",
@@ -269,7 +273,7 @@ class TesiraLogicPulseBlockOnDuration(NumberEntity):
         except Exception as e:
             _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
 
-class TesiraLogicPulseBlockCount(NumberEntity):
+class TesiraLogicPulseBlockPulseCount(NumberEntity):
     """Expose a Tesira logic pulse block (Pulse Count) as a Home Assistant number entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
@@ -298,9 +302,154 @@ class TesiraLogicPulseBlockCount(NumberEntity):
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             resp = await self._hub.json(f"{self._instance_tag} get pulseCount {self._channel}")
+            pulse_count = resp["value"]
+            if pulse_count is not None:
+                self._attr_native_value = pulse_count
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+    async def async_set_native_value(self, value: int) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} set pulseCount {self._channel} {value}")
+            self._attr_is_on = True
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+
+class TesiraLogicSequenceBlockOffDuration(NumberEntity):
+    """Expose a Tesira logic sequence block (Off Duration) as a Home Assistant number entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._min_value = int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) >= 500 else 500
+        self._max_value = int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) <= 60000 else 60000
+        self._attr_name = f"Tesira Logic Sequence Block - Tag:{self._instance_tag} - Attr:OffDuration - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_offduration_{self._channel}".lower()
+        self._attr_mode = "box"
+        self._attr_native_step = 1
+        self._attr_native_max_value = self._max_value
+        self._attr_native_min_value = self._min_value
+        self._attr_device_class = NumberDeviceClass.DURATION
+        self._attr_native_unit_of_measurement = "ms"
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get durationOff {self._channel}")
+            off_duration = resp["value"]
+            if off_duration is not None:
+                self._attr_native_value = off_duration
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+    async def async_set_native_value(self, value: int) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} set durationOff {self._channel} {value}")
+            self._attr_is_on = True
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+
+class TesiraLogicSequenceBlockOnDuration(NumberEntity):
+    """Expose a Tesira logic sequence block (On Duration) as a Home Assistant number entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._min_value = int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) >= 500 else 500
+        self._max_value = int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) <= 60000 else 60000
+        self._attr_name = f"Tesira Logic Sequence Block - Tag:{self._instance_tag} - Attr:OnDuration - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_onduration_{self._channel}".lower()
+        self._attr_mode = "box"
+        self._attr_native_step = 1
+        self._attr_native_max_value = self._max_value
+        self._attr_native_min_value = self._min_value
+        self._attr_device_class = NumberDeviceClass.DURATION
+        self._attr_native_unit_of_measurement = "ms"
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get durationOn {self._channel}")
             on_duration = resp["value"]
             if on_duration is not None:
                 self._attr_native_value = on_duration
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+    async def async_set_native_value(self, value: int) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} set durationOn {self._channel} {value}")
+            self._attr_is_on = True
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+
+class TesiraLogicSequenceBlockPulseCount(NumberEntity):
+    """Expose a Tesira logic sequence block (Pulse Count) as a Home Assistant number entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._min_value = int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) >= 1 else 1
+        self._max_value = int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) <= 100 else 100
+        self._attr_name = f"Tesira Logic Sequence Block - Tag:{self._instance_tag} - Attr:PulseCount - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_pulsecount_{self._channel}".lower()
+        self._attr_mode = "box"
+        self._attr_native_step = 1
+        self._attr_native_max_value = self._max_value
+        self._attr_native_min_value = self._min_value
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get pulseCount {self._channel}")
+            pulse_count = resp["value"]
+            if pulse_count is not None:
+                self._attr_native_value = pulse_count
                 self._attr_available = True
             else:
                 raise ValueError(f"Could not parse state from response: {resp!r}")
