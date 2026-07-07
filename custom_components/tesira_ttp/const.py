@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, July 7th 2026, 11:18:16 PM                                                                   #
+# Last Modified: Wednesday, July 8th 2026, 12:03:18 AM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,7 +27,7 @@ from __future__ import annotations
 from homeassistant.const import Platform
 
 DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER]
+PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.BUTTON]
 
 DICT_KEYS = {
     "DATA_HUBS": "hubs",
@@ -134,9 +134,8 @@ BLOCK_SCHEMA_DATA = {
     "logic_delay": {
         "label": "Logic Delay",
         DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
-            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 0, "max": 60000},
-            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 0, "max": 60000},
-            DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"
+            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 0, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"},
+            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 0, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
         },
         DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch", "number"],
         DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
@@ -164,12 +163,11 @@ BLOCK_SCHEMA_DATA = {
     "logic_pulse": {
         "label": "Logic Pulse",
         DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
-            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 1000, "max": 60000},
-            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 1000, "max": 60000},
-            DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"
+            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 1, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"},
+            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 1, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
         },
-        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor", "switch", "number"],
-        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"]]
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor", "switch", "number", "button"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
     }
 }
 
