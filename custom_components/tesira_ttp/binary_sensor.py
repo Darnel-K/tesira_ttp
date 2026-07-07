@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Tuesday, July 7th 2026, 11:08:47 PM                                                                   #
+# Created Date: Friday, May 8th 2026, 10:59:43 PM                                                                      #
+# Last Modified: Tuesday, July 7th 2026, 11:26:25 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -233,9 +233,9 @@ class TesiraLogicPulseBlock(BinarySensorEntity):
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             resp = await self._hub.json(f"{self._instance_tag} get active {self._channel}")
-            state = resp["value"]
-            if state is not None:
-                self._attr_is_on = _coerce_bool(state)
+            active = resp["value"]
+            if active is not None:
+                self._attr_is_on = _coerce_bool(active)
                 self._attr_available = True
             else:
                 raise ValueError(f"Could not parse active state from response: {resp!r}")

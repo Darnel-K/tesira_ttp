@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\switch.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Tuesday, July 7th 2026, 11:12:04 PM                                                                   #
+# Created Date: Friday, May 8th 2026, 10:59:43 PM                                                                      #
+# Last Modified: Tuesday, July 7th 2026, 11:26:25 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -331,9 +331,9 @@ class TesiraLogicInputBlock(SwitchEntity):
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             resp = await self._hub.json(f"{self._instance_tag} get invert {self._channel}")
-            state = resp["value"]
-            if state is not None:
-                self._attr_is_on = _coerce_bool(state)
+            invert = resp["value"]
+            if invert is not None:
+                self._attr_is_on = _coerce_bool(invert)
                 self._attr_available = True
             else:
                 raise ValueError(f"Could not parse invert state from response: {resp!r}")
@@ -388,9 +388,9 @@ class TesiraLogicOutputBlock(SwitchEntity):
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             resp = await self._hub.json(f"{self._instance_tag} get invert {self._channel}")
-            state = resp["value"]
-            if state is not None:
-                self._attr_is_on = _coerce_bool(state)
+            invert = resp["value"]
+            if invert is not None:
+                self._attr_is_on = _coerce_bool(invert)
                 self._attr_available = True
             else:
                 raise ValueError(f"Could not parse invert state from response: {resp!r}")
@@ -529,9 +529,9 @@ class TesiraLogicPulseBlock(SwitchEntity):
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             resp = await self._hub.json(f"{self._instance_tag} get indefinite {self._channel}")
-            state = resp["value"]
-            if state is not None:
-                self._attr_is_on = _coerce_bool(state)
+            indefinite = resp["value"]
+            if indefinite is not None:
+                self._attr_is_on = _coerce_bool(indefinite)
                 self._attr_available = True
             else:
                 raise ValueError(f"Could not parse indefinite state from response: {resp!r}")
