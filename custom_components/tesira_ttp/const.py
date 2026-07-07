@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, July 7th 2026, 11:03:40 PM                                                                   #
+# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
+# Last Modified: Tuesday, July 7th 2026, 11:08:47 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -163,7 +163,7 @@ BLOCK_SCHEMA_DATA = {
     },
     "logic_pulse": {
         "label": "Logic Pulse",
-        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor"],
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor", "switch"],
         DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"]]
     }
 }

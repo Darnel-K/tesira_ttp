@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Monday, April 13th 2026, 12:33:01 AM                                                                   #
-# Last Modified: Tuesday, July 7th 2026, 11:06:42 PM                                                                   #
+# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
+# Last Modified: Tuesday, July 7th 2026, 11:08:47 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -55,6 +55,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
                 case "logic_meter":
                     entities_list.append(TesiraLogicMeterBlock(hub=hub, hubkey=hubkey, entity=entity))
+                case "logic_pulse":
+                    entities_list.append(TesiraLogicPulseBlock(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
                         "Unsupported binary sensor block type '%s' for entity: %s",
