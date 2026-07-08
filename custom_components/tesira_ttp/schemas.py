@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
+# Last Modified: Wednesday, July 8th 2026, 1:49:08 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -68,7 +68,8 @@ def _entity_schema(defaults: dict[str, Any] | None = None, block_type: str | Non
         raise ValueError(f"Unsupported block type: {block_type}")
 
     block_data = BLOCK_SCHEMA_DATA[block_type]
-    fields = block_data.get("fields", [])
+    fields = block_data.get(DICT_KEYS["ENTITY_BLOCK_FIELDS"], [])
+    field_options = block_data.get(DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"], None)
     schema_dict = {}
 
     # Convert declarative field metadata into voluptuous validators at runtime.
@@ -77,13 +78,31 @@ def _entity_schema(defaults: dict[str, Any] | None = None, block_type: str | Non
         default_value = d.get(field, field_info.get("default", None))
         required = field_info.get("required", False)
         field_type = field_info.get("type", "string")
+        options = None
+
+        if field_options and field in field_options:
+            options = field_options.get(field, None)
+            if options.get(DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"], None) is not None:
+                field_type = options[DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]]
 
         if field_type == "string":
             validator = cv.string
         elif field_type == "integer":
-            validator = vol.Coerce(int)
+            if isinstance(options, dict):
+                if ("min" in options and isinstance(options["min"], int)) and ("max" in options and isinstance(options["max"], int)):
+                    validator = vol.All(vol.Coerce(int), vol.Range(min=options["min"], max=options["max"]))
+                else:
+                    raise ValueError(f"Invalid options for integer field '{field}', cannot mix int and float: {options}")
+            else:
+                validator = vol.Coerce(int)
         elif field_type == "float":
-            validator = vol.Coerce(float)
+            if isinstance(options, dict):
+                if ("min" in options and isinstance(options["min"], (int, float))) and ("max" in options and isinstance(options["max"], (int, float))):
+                    validator = vol.All(vol.Coerce(float), vol.Range(min=options["min"], max=options["max"]))
+                else:
+                    raise ValueError(f"Invalid options for float field '{field}': {options}")
+            else:
+                validator = vol.Coerce(float)
         elif field_type == "boolean":
             validator = vol.Coerce(bool)
         elif field_type == "port":

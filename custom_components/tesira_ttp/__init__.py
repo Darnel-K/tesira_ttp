@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\__init__.py                                                                  #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, July 8th 2026, 1:49:18 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -25,19 +25,86 @@
 from __future__ import annotations
 
 import logging
-import copy
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN, PLATFORMS, DICT_KEYS, DEFAULTS
+from .const import DOMAIN, PLATFORMS, DICT_KEYS
 from .hub import TesiraHub
+from .util import _devices, _credentials
+from .migration import VersionMigrations
+from .config_flow import TesiraTtpConfigFlow
 
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate config entry data and options to the current integration version."""
+    current_major_version = config_entry.version
+    current_minor_version = config_entry.minor_version
+    target_major_version = TesiraTtpConfigFlow.VERSION
+    target_minor_version = TesiraTtpConfigFlow.MINOR_VERSION
+
+    _LOGGER.debug(
+        "Migrating config entry from version %s.%s to %s.%s",
+        current_major_version,
+        current_minor_version,
+        target_major_version,
+        target_minor_version,
+    )
+
+    if (
+        current_major_version == target_major_version
+        and current_minor_version == target_minor_version
+    ):
+        _LOGGER.debug("Config entry already at target version %s.%s", target_major_version, target_minor_version)
+        return True
+
+    try:
+        migrated_data = await VersionMigrations.migrate_config_flow(
+            current_major_version=current_major_version,
+            current_minor_version=current_minor_version,
+            target_major_version=target_major_version,
+            target_minor_version=target_minor_version,
+            config_flow_data=dict(config_entry.data),
+        )
+        migrated_options = await VersionMigrations.migrate_options_flow(
+            current_major_version=current_major_version,
+            current_minor_version=current_minor_version,
+            target_major_version=target_major_version,
+            target_minor_version=target_minor_version,
+            options_flow_data=dict(config_entry.options),
+        )
+    except Exception as err:
+        _LOGGER.exception(
+            "Failed to migrate config entry from %s.%s to %s.%s: %s",
+            current_major_version,
+            current_minor_version,
+            target_major_version,
+            target_minor_version,
+            err,
+        )
+        return False
+
+    hass.config_entries.async_update_entry(
+        config_entry,
+        data=migrated_data,
+        options=migrated_options,
+        version=target_major_version,
+        minor_version=target_minor_version,
+    )
+
+    _LOGGER.info(
+        "Successfully migrated config entry from %s.%s to %s.%s",
+        current_major_version,
+        current_minor_version,
+        target_major_version,
+        target_minor_version,
+    )
+    return True
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # Keep integration state in hass.data so all platforms can share hubs and lookup keys.
@@ -52,14 +119,14 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Validate config entry data and create/reuse a hub instance for this entry.
-    devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
+    devices = _devices(entry)
     primary_device_id = devices.get(DICT_KEYS["PRIMARY_DEVICE"])
     if not primary_device_id or primary_device_id not in devices[DICT_KEYS["DEVICE_ITEMS"]]:
         _LOGGER.error("Invalid or missing primary device in config entry %s", entry.entry_id)
         return False
     primary_device = devices[DICT_KEYS["DEVICE_ITEMS"]][primary_device_id]
     conn_info = primary_device[DICT_KEYS["DEVICE_CONNECTION_INFO"]]
-    auth_credentials = conn_info.get(DICT_KEYS["DEVICE_CONNECTION_INFO_AUTH"], {})
+    auth_credentials = _credentials(entry, device_id=primary_device_id)
     host = conn_info.get(DICT_KEYS["HOST"])
     port = conn_info.get(DICT_KEYS["PORT"])
     proto = conn_info.get(DICT_KEYS["PROTO"])

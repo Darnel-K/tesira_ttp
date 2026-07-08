@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\config_flow.py                                                               #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Thursday, April 16th 2026, 11:33:40 PM                                                                #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, July 8th 2026, 1:49:49 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -37,18 +37,24 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import DOMAIN, DICT_KEYS, DEFAULTS, CONFIG_MODES, SUPPORTED_BLOCKS, BLOCK_SCHEMA_DATA
 from .tesira_client import TesiraClient
-from .util import gen_device_id, gen_device_dict, gen_entity_dict, _redact_device, _devices, _entities, _device_name_map, _entity_name_map, TesiraTTPException
+from .util import gen_device_id, gen_device_dict, gen_credential_dict, gen_entity_dict, _redact_device, _devices, _credentials, _entities, _device_name_map, _entity_name_map, TesiraTTPException
 from .schemas import _device_schema, _hub, _entity_schema
 
 _LOGGER = logging.getLogger(__name__)
 
 class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 1
+    VERSION = 2
+    MINOR_VERSION = 1
 
     @property
     def _devices(self) -> dict[str, Any]:
         """Return a copy of the devices dict from the config entry data, or defaults if not available"""
         return _devices(self.context.get(DICT_KEYS["CONFIG_ENTRY"]))
+
+    @property
+    def _credentials(self) -> dict[str, Any]:
+        """Return a copy of the credentials dict from the config entry data, or defaults if not available"""
+        return _credentials(self.context.get(DICT_KEYS["CONFIG_ENTRY"]))
 
     async def _connectivity_test(self, host: str, port: int, proto: str, user: str, pwrd: str) -> tuple[dict[str, Any] | None, str | None]:
         # Validate credentials/connectivity and return device info or a flow error key.
@@ -107,6 +113,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             pwrd = user_input[DICT_KEYS["PASS"]]
 
             devices = self._devices
+            credentials = self._credentials
 
             device_info, error = await self._connectivity_test(form_data[DICT_KEYS["HOST"]], form_data[DICT_KEYS["PORT"]], form_data[DICT_KEYS["PROTO"]], form_data[DICT_KEYS["USER"]], pwrd)
             if error:
@@ -115,6 +122,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Build a stable device ID and persisted device payload.
             device_id = gen_device_id(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
             device = gen_device_dict(form_data[DICT_KEYS["HOST"]], form_data[DICT_KEYS["PORT"]], form_data[DICT_KEYS["PROTO"]], form_data[DICT_KEYS["USER"]], pwrd, device_info)
+            credential = gen_credential_dict(form_data[DICT_KEYS["USER"]], pwrd)
 
             # Prevent duplicate entries for the same discovered device.
             if device_id in devices[DICT_KEYS["DEVICE_ITEMS"]]:
@@ -127,13 +135,15 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 title: str = self.context.get(DICT_KEYS["HUB_TITLE"])
                 devices[DICT_KEYS["DEVICE_ITEMS"]][device_id] = device
                 devices[DICT_KEYS["PRIMARY_DEVICE"]] = device_id
+                credentials[device_id] = credential
                 _LOGGER.debug("Added new device: %s", _redact_device(device))
-                return self.async_create_entry(title=title, data={DICT_KEYS["DEVICES"]: devices})
+                return self.async_create_entry(title=title, data={DICT_KEYS["DEVICES"]: devices, DICT_KEYS["CREDENTIALS"]: credentials})
             else:
                 entry = self.context[DICT_KEYS["CONFIG_ENTRY"]]
                 devices[DICT_KEYS["DEVICE_ITEMS"]][device_id] = device
+                credentials[device_id] = credential
                 _LOGGER.debug("Added new device: %s", _redact_device(device))
-                return self.async_update_reload_and_abort(entry, data={DICT_KEYS["DEVICES"]: devices}, reason="device_added")
+                return self.async_update_reload_and_abort(entry, data={DICT_KEYS["DEVICES"]: devices, DICT_KEYS["CREDENTIALS"]: credentials}, reason="device_added")
 
         return self.async_show_form(step_id="add_device", data_schema=_device_schema(), errors=form_errors)
 
@@ -179,7 +189,9 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="unknown")
         # Pre-fill the form with existing connection settings.
         existing_device = self._devices[DICT_KEYS["DEVICE_ITEMS"]].get(edit_id)
+        existing_credential = self._credentials.get(edit_id)
         defaults = existing_device[DICT_KEYS["DEVICE_CONNECTION_INFO"]] if existing_device else {}
+        defaults[DICT_KEYS["USER"]] = existing_credential.get(DICT_KEYS["USER"], DEFAULTS["USER"]) if existing_credential else DEFAULTS["USER"]
 
         if user_input is not None:
             # Read and validate updated connection settings.
@@ -190,6 +202,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             pwrd = user_input[DICT_KEYS["PASS"]]
 
             devices = self._devices
+            credentials = self._credentials
 
             # Reject changes when the updated connection cannot be validated.
             device_info, error = await self._connectivity_test(form_data[DICT_KEYS["HOST"]], form_data[DICT_KEYS["PORT"]], form_data[DICT_KEYS["PROTO"]], form_data[DICT_KEYS["USER"]], pwrd)
@@ -199,6 +212,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Rebuild ID and payload from the validated endpoint.
             device_id = gen_device_id(deviceModel=device_info["deviceModel"], deviceRevision=device_info["deviceRevision"], serialNumber=device_info["serialNumber"])
             device = gen_device_dict(form_data[DICT_KEYS["HOST"]], form_data[DICT_KEYS["PORT"]], form_data[DICT_KEYS["PROTO"]], form_data[DICT_KEYS["USER"]], pwrd, device_info)
+            credential = gen_credential_dict(form_data[DICT_KEYS["USER"]], pwrd)
 
             if device_id != edit_id:
                 # Reject edits that point to a different physical device.
@@ -213,8 +227,9 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_show_form(step_id="edit_device", data_schema=_device_schema(form_data), errors=form_errors)
 
             devices[DICT_KEYS["DEVICE_ITEMS"]][device_id] = device
+            credentials[device_id] = credential
             _LOGGER.debug("Updated existing device: %s", _redact_device(device))
-            return self.async_update_reload_and_abort(entry, data={DICT_KEYS["DEVICES"]: devices}, reason="device_updated")
+            return self.async_update_reload_and_abort(entry, data={DICT_KEYS["DEVICES"]: devices, DICT_KEYS["CREDENTIALS"]: credentials}, reason="device_updated")
 
         return self.async_show_form(step_id="edit_device", data_schema=_device_schema(defaults), errors=form_errors)
 
@@ -235,6 +250,7 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Remove the selected device and reload the entry.
         remove_id = names[user_input["select"]]
         devices = self._devices
+        credentials = self._credentials
         if devices[DICT_KEYS["PRIMARY_DEVICE"]] == remove_id:
             # Require changing primary first to keep config valid.
             _LOGGER.error("Cannot remove primary device, please change primary device first.")
@@ -248,8 +264,9 @@ class TesiraTtpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(step_id="remove_device", data_schema=schema, errors=form_errors)
 
         devices[DICT_KEYS["DEVICE_ITEMS"]].pop(remove_id)
+        credentials.pop(remove_id, None)
         _LOGGER.debug("Removed device with ID %s", remove_id)
-        return self.async_update_reload_and_abort(entry, data={DICT_KEYS["DEVICES"]: devices}, reason="device_removed")
+        return self.async_update_reload_and_abort(entry, data={DICT_KEYS["DEVICES"]: devices, DICT_KEYS["CREDENTIALS"]: credentials}, reason="device_removed")
 
     async def async_step_change_primary(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         # Change which configured device is marked as primary.
