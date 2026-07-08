@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Tuesday, July 7th 2026, 11:50:58 PM                                                                    #
-# Last Modified: Wednesday, July 8th 2026, 12:36:42 AM                                                                 #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, July 8th 2026, 1:27:02 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #

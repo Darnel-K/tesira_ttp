@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\schemas.py                                                                   #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Monday, April 13th 2026, 12:33:01 AM                                                                   #
-# Last Modified: Saturday, May 9th 2026, 12:14:05 AM                                                                   #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Wednesday, July 8th 2026, 1:27:02 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
