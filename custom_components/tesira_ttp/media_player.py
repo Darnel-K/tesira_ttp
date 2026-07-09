@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Saturday, March 28th 2026, 10:45:20 PM                                                                 #
-# Last Modified: Thursday, April 16th 2026, 11:33:39 PM                                                                #
+# Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
+# Last Modified: Friday, July 10th 2026, 12:41:51 AM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -141,13 +141,13 @@ class TesiraLevelBlock(MediaPlayerEntity):
         if self._sub:
             # Prime state once before starting subscriptions to avoid an empty initial UI state.
             await self.async_update()
-            await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_media_player_level_{self._instance_tag}_{self._channel}", 100, self._update_level_from_sub)
-            await self._hub.subscribe(self._instance_tag, "mute", self._channel, f"hass_media_player_mute_{self._instance_tag}_{self._channel}", 100, self._update_mute_from_sub)
+            await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_media_player_level_level_{self._instance_tag}_{self._channel}", 100, self._update_level_from_sub)
+            await self._hub.subscribe(self._instance_tag, "mute", self._channel, f"hass_media_player_level_mute_{self._instance_tag}_{self._channel}", 100, self._update_mute_from_sub)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
-            await self._hub.unsubscribe(f"hass_media_player_level_{self._instance_tag}_{self._channel}")
-            await self._hub.unsubscribe(f"hass_media_player_mute_{self._instance_tag}_{self._channel}")
+            await self._hub.unsubscribe(f"hass_media_player_level_level_{self._instance_tag}_{self._channel}")
+            await self._hub.unsubscribe(f"hass_media_player_level_mute_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:

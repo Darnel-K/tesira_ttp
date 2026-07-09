@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\sensor.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
-# Last Modified: Friday, July 10th 2026, 12:33:53 AM                                                                   #
+# Last Modified: Friday, July 10th 2026, 12:41:51 AM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -115,11 +115,11 @@ class TesiraAudioMeterBlockLevel(SensorEntity):
         if self._sub:
             # Prime state once before starting subscriptions to avoid an empty initial UI state.
             await self.async_update()
-            await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_sensor_audio_meter_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+            await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_sensor_audio_meter_level_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
-            await self._hub.unsubscribe(f"hass_sensor_audio_meter_{self._instance_tag}_{self._channel}")
+            await self._hub.unsubscribe(f"hass_sensor_audio_meter_level_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:

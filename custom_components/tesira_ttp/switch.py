@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\switch.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Thursday, July 9th 2026, 11:32:28 PM                                                                  #
+# Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
+# Last Modified: Friday, July 10th 2026, 12:41:51 AM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -130,11 +130,11 @@ class TesiraLogicStateBlock(SwitchEntity):
         if self._sub:
             # Prime state once before starting subscriptions to avoid an empty initial UI state.
             await self.async_update()
-            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_logic_state_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_logic_state_state_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
-            await self._hub.unsubscribe(f"hass_switch_logic_state_{self._instance_tag}_{self._channel}")
+            await self._hub.unsubscribe(f"hass_switch_logic_state_state_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:
@@ -214,11 +214,11 @@ class TesiraFlipFlopBlock(SwitchEntity):
         if self._sub:
             # Prime state once before starting subscriptions to avoid an empty initial UI state.
             await self.async_update()
-            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_flip_flop_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_flip_flop_state_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
-            await self._hub.unsubscribe(f"hass_switch_flip_flop_{self._instance_tag}_{self._channel}")
+            await self._hub.unsubscribe(f"hass_switch_flip_flop_state_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:
@@ -469,11 +469,11 @@ class TesiraLogicSelectorBlock(SwitchEntity):
         if self._sub:
             # Prime state once before starting subscriptions to avoid an empty initial UI state.
             await self.async_update()
-            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_logic_selector_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_logic_selector_state_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
-            await self._hub.unsubscribe(f"hass_switch_logic_selector_{self._instance_tag}_{self._channel}")
+            await self._hub.unsubscribe(f"hass_switch_logic_selector_state_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:
