@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, July 9th 2026, 11:38:40 PM                                                                   #
-# Last Modified: Friday, July 10th 2026, 12:10:40 AM                                                                   #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Friday, July 10th 2026, 11:56:14 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,7 +27,7 @@ from __future__ import annotations
 from homeassistant.const import Platform
 
 DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.BUTTON, Platform.SELECT]
+PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.BUTTON, Platform.SELECT, Platform.SENSOR]
 
 DICT_KEYS = {
     "DATA_HUBS": "hubs",
@@ -185,7 +185,7 @@ BLOCK_SCHEMA_DATA = {
             DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 0, "max": 1000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
         },
         DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch", "number", "select", "sensor"],
-        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
     }
 }
 
