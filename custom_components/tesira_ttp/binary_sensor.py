@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\binary_sensor.py                                                             #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, July 8th 2026, 1:23:41 AM                                                                  #
+# Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
+# Last Modified: Friday, July 10th 2026, 12:41:51 AM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -193,11 +193,11 @@ class TesiraLogicMeterBlock(BinarySensorEntity):
         if self._sub:
             # Prime state once before starting subscriptions to avoid an empty initial UI state.
             await self.async_update()
-            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_switch_level_meter_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+            await self._hub.subscribe(self._instance_tag, "state", self._channel, f"hass_binary_sensor_logic_meter_state_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
-            await self._hub.unsubscribe(f"hass_switch_level_meter_{self._instance_tag}_{self._channel}")
+            await self._hub.unsubscribe(f"hass_binary_sensor_logic_meter_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:
