@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Wednesday, July 8th 2026, 1:27:02 AM                                                                  #
+# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
+# Last Modified: Monday, July 13th 2026, 11:36:27 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -27,7 +27,7 @@ from __future__ import annotations
 from homeassistant.const import Platform
 
 DOMAIN = "tesira_ttp"
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.BUTTON]
+PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.BINARY_SENSOR, Platform.SWITCH, Platform.NUMBER, Platform.BUTTON, Platform.SELECT, Platform.SENSOR]
 
 DICT_KEYS = {
     "DATA_HUBS": "hubs",
@@ -177,6 +177,24 @@ BLOCK_SCHEMA_DATA = {
         },
         DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["binary_sensor", "switch", "number", "button"],
         DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"]]
+    },
+    "audio_meter": {
+        "label": "Audio Meter",
+        DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
+            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": 0, "max": 1000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"},
+            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": 0, "max": 1000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
+        },
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch", "number", "select", "sensor"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "signal_present_meter": {
+        "label": "Signal Present Meter",
+        DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
+            DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": -64, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"},
+            DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": -64, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
+        },
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch", "number", "sensor", "binary_sensor"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
     }
 }
 

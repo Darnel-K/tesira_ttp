@@ -1,8 +1,8 @@
 # #################################################################################################################### #
-# Filename: \custom_components\tesira_ttp\media_player.py                                                              #
+# Filename: \custom_components\tesira_ttp\sensor.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Wednesday, July 8th 2026, 1:46:51 AM                                                                   #
-# Last Modified: Monday, July 13th 2026, 11:58:54 PM                                                                   #
+# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
+# Last Modified: Tuesday, July 14th 2026, 12:17:57 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -30,18 +30,19 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.components.media_player import MediaPlayerEntity
-from homeassistant.components.media_player.const import MediaPlayerEntityFeature, MediaPlayerState
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, DICT_KEYS, DEFAULTS
-from .util import db_to_level, level_to_db, _coerce_bool
 from .hub import TesiraHub
+from .util import _coerce_bool
 
 
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    """Set up Tesira sensor entities for a config entry."""
+
     hubkey = entry.entry_id
     hub: TesiraHub = hass.data[DOMAIN][DICT_KEYS["DATA_HUBS"]][hubkey]
     # devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
@@ -50,23 +51,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # Build entities from the dynamic options structure by block type.
     for entity in entities:
-        if "media_player" in entity[DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]]:
+        if "sensor" in entity[DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]]:
             match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
-                case "level":
-                    entities_list.append(TesiraLevelBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
+                case "audio_meter":
+                    entities_list.append(TesiraAudioMeterBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
+                case "signal_present_meter":
+                    entities_list.append(TesiraSignalPresentMeterBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
+                case _:
+                    _LOGGER.debug(
+                        "Unsupported switch block type '%s' for entity: %s",
+                        entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"]),
+                        entity,
+                    )
 
 
-    # Remove stale media_player entities no longer present in the current config.
+    # Remove stale switch entities no longer present in the current config.
     entity_registry = er.async_get(hass)
     expected_ids = {e.unique_id for e in entities_list}
     for entity_entry in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
-        if entity_entry.domain == "media_player" and entity_entry.unique_id not in expected_ids:
+        if entity_entry.domain == "sensor" and entity_entry.unique_id not in expected_ids:
             entity_registry.async_remove(entity_entry.entity_id)
 
     async_add_entities(entities_list, update_before_add=True)
 
-class TesiraLevelBlockLevel(MediaPlayerEntity):
-    """Expose a Tesira level block (Level) as a Home Assistant media player volume entity."""
+class TesiraAudioMeterBlockLevel(SensorEntity):
+    """Expose a Tesira audio meter block (Level) as a Home Assistant switch entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -77,19 +86,12 @@ class TesiraLevelBlockLevel(MediaPlayerEntity):
         self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
         self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
         self._sub = entity.get(DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"])
-        self._attr_name = f"Tesira Level Block - Tag:{self._instance_tag} - Attr:Level - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_name = f"Tesira Audio Meter Block - Tag:{self._instance_tag} - Attr:Level - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
         self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_level_{self._channel}".lower()
-        self._attr_supported_features = (
-            MediaPlayerEntityFeature.VOLUME_SET
-            | MediaPlayerEntityFeature.VOLUME_STEP
-            | MediaPlayerEntityFeature.VOLUME_MUTE
-        )
-        self._attr_state = MediaPlayerState.IDLE
+        self._attr_device_class = SensorDeviceClass.SOUND_PRESSURE
+        self._attr_native_unit_of_measurement = "dB"
+        self._attr_suggested_display_precision = 2
         self._attr_available = True
-        self._max_db: float = 12.0
-        self._min_db: float = -100.0
-        self._current_level: float | None = None
-        self._muted: bool | None = None
 
         if self._sub:
             # Subscription mode pushes updates from the DSP, so polling is unnecessary.
@@ -98,96 +100,102 @@ class TesiraLevelBlockLevel(MediaPlayerEntity):
             self._attr_should_poll = True
 
     @property
-    def volume_level(self) -> float | None:
-        if self._current_level is None:
-            return None
-        return db_to_level(self._current_level, self._min_db, self._max_db)
-
-    @property
-    def is_volume_muted(self) -> bool | None:
-        return self._muted
-
-    @property
     def device_info(self):
         return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
 
-    async def get_block_details(self) -> None:
-        # Pull live min/max dB limits to normalize volume values correctly for this block.
-        resp = await self._hub.json(f"{self._instance_tag} get maxLevel {self._channel}")
-        self._max_db = float(resp.get("value", 12.0))
-        resp = await self._hub.json(f"{self._instance_tag} get minLevel {self._channel}")
-        self._min_db = float(resp.get("value", -100.0))
-
-    def _update_level_from_sub(self, data: dict) -> None:
+    def _update_state_from_sub(self, data: dict) -> None:
         level = data.get("value")
         if level is not None:
-            self._current_level = float(level)
+            self._attr_native_value = level
             self._attr_available = True
-            self._attr_state = MediaPlayerState.IDLE
             self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
         else:
             _LOGGER.warning("Received subscription update without level value: %s", data)
-
-    def _update_mute_from_sub(self, data: dict) -> None:
-        muted = data.get("value")
-        if muted is not None:
-            self._muted = _coerce_bool(muted)
-            self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
-        else:
-            _LOGGER.warning("Received subscription update without mute value: %s", data)
 
     async def async_added_to_hass(self) -> None:
         self._hass = self.hass
         if self._sub:
             # Prime state once before starting subscriptions to avoid an empty initial UI state.
             await self.async_update()
-            await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_media_player_level_level_{self._instance_tag}_{self._channel}", 100, self._update_level_from_sub)
-            await self._hub.subscribe(self._instance_tag, "mute", self._channel, f"hass_media_player_level_mute_{self._instance_tag}_{self._channel}", 100, self._update_mute_from_sub)
+            await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_sensor_audio_meter_level_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
-            await self._hub.unsubscribe(f"hass_media_player_level_level_{self._instance_tag}_{self._channel}")
-            await self._hub.unsubscribe(f"hass_media_player_level_mute_{self._instance_tag}_{self._channel}")
+            await self._hub.unsubscribe(f"hass_sensor_audio_meter_level_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
-            await self.get_block_details()
             resp = await self._hub.json(f"{self._instance_tag} get level {self._channel}")
             level = resp["value"]
             if level is not None:
-                self._current_level = float(level)
+                self._attr_native_value = level
                 self._attr_available = True
-                self._attr_state = MediaPlayerState.IDLE
             else:
                 raise ValueError(f"Could not parse level from response: {resp!r}")
-
-            try:
-                resp_m = await self._hub.json(f"{self._instance_tag} get mute {self._channel}")
-                muted = resp_m['value']
-                if muted is not None:
-                    self._muted = _coerce_bool(muted)
-            except Exception:
-                pass
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
 
-    async def async_set_volume_level(self, volume: float) -> None:
-        db = level_to_db(volume, self._min_db, self._max_db)
-        await self._hub.json(f"{self._instance_tag} set level {self._channel} {db:.3f}")
-        self._current_level = db
+class TesiraSignalPresentMeterBlockLevel(SensorEntity):
+    """Expose a Tesira signal present meter block (Level) as a Home Assistant switch entity."""
 
-    async def async_volume_up(self) -> None:
-        await self._hub.json(f"{self._instance_tag} increment level {self._channel} 0.1")
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._sub = entity.get(DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"])
+        self._attr_name = f"Tesira Signal Present Meter Block - Tag:{self._instance_tag} - Attr:Level - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_level_{self._channel}".lower()
+        self._attr_device_class = SensorDeviceClass.SOUND_PRESSURE
+        self._attr_native_unit_of_measurement = "dB"
+        self._attr_suggested_display_precision = 2
+        self._attr_available = True
 
-    async def async_volume_down(self) -> None:
-        await self._hub.json(f"{self._instance_tag} increment level {self._channel} -0.1")
-
-    async def async_mute_volume(self, mute: bool) -> None:
-        resp = await self._hub.json(f"{self._instance_tag} set mute {self._channel} {'true' if mute else 'false'}")
-        if "error" in resp:
-            _LOGGER.warning("Mute command returned error for %s: %s", self._attr_unique_id, resp['error'])
+        if self._sub:
+            # Subscription mode pushes updates from the DSP, so polling is unnecessary.
+            self._attr_should_poll = False
         else:
-            self._muted = mute
-            self.async_write_ha_state()
+            self._attr_should_poll = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    def _update_state_from_sub(self, data: dict) -> None:
+        level = data.get("value")
+        if level is not None:
+            self._attr_native_value = level
+            self._attr_available = True
+            self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+        else:
+            _LOGGER.warning("Received subscription update without level value: %s", data)
+
+    async def async_added_to_hass(self) -> None:
+        self._hass = self.hass
+        if self._sub:
+            # Prime state once before starting subscriptions to avoid an empty initial UI state.
+            await self.async_update()
+            await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_sensor_signal_present_meter_level_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._sub:
+            await self._hub.unsubscribe(f"hass_sensor_signal_present_meter_level_{self._instance_tag}_{self._channel}")
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get level {self._channel}")
+            level = resp["value"]
+            if level is not None:
+                self._attr_native_value = level
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse level from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
