@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\sensor.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
-# Last Modified: Friday, July 10th 2026, 12:41:51 AM                                                                   #
+# Last Modified: Monday, July 13th 2026, 11:19:21 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -55,6 +55,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
                 case "audio_meter":
                     entities_list.append(TesiraAudioMeterBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
+                case "signal_present_meter":
+                    entities_list.append(TesiraSignalPresentMeterBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
                         "Unsupported switch block type '%s' for entity: %s",
@@ -120,6 +122,69 @@ class TesiraAudioMeterBlockLevel(SensorEntity):
     async def async_will_remove_from_hass(self) -> None:
         if self._sub:
             await self._hub.unsubscribe(f"hass_sensor_audio_meter_level_{self._instance_tag}_{self._channel}")
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get level {self._channel}")
+            level = resp["value"]
+            if level is not None:
+                self._attr_native_value = level
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+class TesiraSignalPresentMeterBlockLevel(SensorEntity):
+    """Expose a Tesira signal present meter block (Level) as a Home Assistant switch entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._sub = entity.get(DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"])
+        self._attr_name = f"Tesira Signal Present Meter Block - Tag:{self._instance_tag} - Attr:Level - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_level_{self._channel}".lower()
+        self._attr_device_class = SensorDeviceClass.SOUND_PRESSURE
+        self._attr_native_unit_of_measurement = "dB"
+        self._attr_suggested_display_precision = 2
+        self._attr_available = True
+
+        if self._sub:
+            # Subscription mode pushes updates from the DSP, so polling is unnecessary.
+            self._attr_should_poll = False
+        else:
+            self._attr_should_poll = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    def _update_state_from_sub(self, data: dict) -> None:
+        level = data.get("value")
+        if level is not None:
+            self._attr_native_value = level
+            self._attr_available = True
+            self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+        else:
+            _LOGGER.warning("Received subscription update without state value: %s", data)
+
+    async def async_added_to_hass(self) -> None:
+        self._hass = self.hass
+        if self._sub:
+            # Prime state once before starting subscriptions to avoid an empty initial UI state.
+            await self.async_update()
+            await self._hub.subscribe(self._instance_tag, "level", self._channel, f"hass_sensor_signal_present_meter_level_{self._instance_tag}_{self._channel}", 100, self._update_state_from_sub)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._sub:
+            await self._hub.unsubscribe(f"hass_sensor_signal_present_meter_level_{self._instance_tag}_{self._channel}")
 
     async def async_update(self) -> None:
         try:

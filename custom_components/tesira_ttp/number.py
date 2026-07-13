@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\number.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Wednesday, July 8th 2026, 1:46:51 AM                                                                   #
-# Last Modified: Thursday, July 9th 2026, 11:37:39 PM                                                                  #
+# Last Modified: Monday, July 13th 2026, 11:35:44 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -64,6 +64,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     entities_list.append(TesiraLogicSequenceBlockPulseCount(hub=hub, hubkey=hubkey, entity=entity))
                 case "audio_meter":
                     entities_list.append(TesiraAudioMeterBlockHoldTime(hub=hub, hubkey=hubkey, entity=entity))
+                case "signal_present_meter":
+                    entities_list.append(TesiraSignalPresentMeterBlockOffDelay(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraSignalPresentMeterBlockOnDelay(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraSignalPresentMeterBlockThreshold(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
                         "Unsupported number block type '%s' for entity: %s",
@@ -513,6 +517,153 @@ class TesiraAudioMeterBlockHoldTime(NumberEntity):
     async def async_set_native_value(self, value: int) -> None:
         try:
             await self._hub.json(f"{self._instance_tag} set holdTime {self._channel} {value}")
+            self._attr_is_on = True
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+
+class TesiraSignalPresentMeterBlockOffDelay(NumberEntity):
+    """Expose a Tesira signal present meter block (Off Delay) as a Home Assistant number entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._min_value = int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) >= 0 else 0
+        self._max_value = int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) <= 60000 else 60000
+        self._attr_name = f"Tesira Signal Present Meter Block - Tag:{self._instance_tag} - Attr:OffDelay - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_offdelay_{self._channel}".lower()
+        self._attr_mode = "box"
+        self._attr_native_step = 1
+        self._attr_native_max_value = self._max_value
+        self._attr_native_min_value = self._min_value
+        self._attr_device_class = NumberDeviceClass.DURATION
+        self._attr_native_unit_of_measurement = "ms"
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get offDelay {self._channel}")
+            delay = resp["value"]
+            if delay is not None:
+                self._attr_native_value = delay
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+    async def async_set_native_value(self, value: int) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} set offDelay {self._channel} {value}")
+            self._attr_is_on = True
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+
+class TesiraSignalPresentMeterBlockOnDelay(NumberEntity):
+    """Expose a Tesira signal present meter block (On Delay) as a Home Assistant number entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._min_value = int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) >= 0 else 0
+        self._max_value = int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) <= 60000 else 60000
+        self._attr_name = f"Tesira Signal Present Meter Block - Tag:{self._instance_tag} - Attr:OnDelay - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_ondelay_{self._channel}".lower()
+        self._attr_mode = "box"
+        self._attr_native_step = 1
+        self._attr_native_max_value = self._max_value
+        self._attr_native_min_value = self._min_value
+        self._attr_device_class = NumberDeviceClass.DURATION
+        self._attr_native_unit_of_measurement = "ms"
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get onDelay {self._channel}")
+            delay = resp["value"]
+            if delay is not None:
+                self._attr_native_value = delay
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+    async def async_set_native_value(self, value: int) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} set onDelay {self._channel} {value}")
+            self._attr_is_on = True
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+
+class TesiraSignalPresentMeterBlockThreshold(NumberEntity):
+    """Expose a Tesira signal present meter block (Threshold) as a Home Assistant number entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._channel = int(entity.get(DICT_KEYS["ENTITY_BLOCK_CHANNEL"]))
+        self._min_value = int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MIN_VALUE"])) >= -64 else -64
+        self._max_value = int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) if int(entity.get(DICT_KEYS["ENTITY_MAX_VALUE"])) <= 30 else 30
+        self._attr_name = f"Tesira Signal Present Meter Block - Tag:{self._instance_tag} - Attr:Threshold - Chan:{self._channel} ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_threshold_{self._channel}".lower()
+        self._attr_mode = "box"
+        self._attr_native_step = 1
+        self._attr_native_max_value = self._max_value
+        self._attr_native_min_value = self._min_value
+        self._attr_device_class = NumberDeviceClass.DURATION
+        self._attr_native_unit_of_measurement = "ms"
+        self._attr_available = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    async def async_update(self) -> None:
+        try:
+            # Limits may differ between blocks/channels, so refresh before conversion each cycle.
+            resp = await self._hub.json(f"{self._instance_tag} get threshold {self._channel}")
+            delay = resp["value"]
+            if delay is not None:
+                self._attr_native_value = delay
+                self._attr_available = True
+            else:
+                raise ValueError(f"Could not parse state from response: {resp!r}")
+        except Exception as e:
+            _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
+            self._attr_available = False
+
+    async def async_set_native_value(self, value: int) -> None:
+        try:
+            await self._hub.json(f"{self._instance_tag} set threshold {self._channel} {value}")
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
