@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
-# Last Modified: Friday, July 10th 2026, 12:41:51 AM                                                                   #
+# Created Date: Wednesday, July 8th 2026, 1:46:51 AM                                                                   #
+# Last Modified: Monday, July 13th 2026, 11:58:54 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -53,7 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         if "media_player" in entity[DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]]:
             match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
                 case "level":
-                    entities_list.append(TesiraLevelBlock(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLevelBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
 
 
     # Remove stale media_player entities no longer present in the current config.
@@ -65,8 +65,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     async_add_entities(entities_list, update_before_add=True)
 
-class TesiraLevelBlock(MediaPlayerEntity):
-    """Expose a Tesira level block channel as a Home Assistant media player volume entity."""
+class TesiraLevelBlockLevel(MediaPlayerEntity):
+    """Expose a Tesira level block (Level) as a Home Assistant media player volume entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub

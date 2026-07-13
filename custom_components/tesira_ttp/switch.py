@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\switch.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Monday, July 13th 2026, 11:39:17 PM                                                                   #
+# Last Modified: Tuesday, July 14th 2026, 12:17:57 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -54,17 +54,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         if "switch" in entity[DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]]:
             match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
                 case "logic_state":
-                    entities_list.append(TesiraLogicStateBlock(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicStateBlockState(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_selector":
-                    entities_list.append(TesiraLogicSelectorBlock(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicSelectorBlockState(hub=hub, hubkey=hubkey, entity=entity))
                 case "flip_flop":
-                    entities_list.append(TesiraFlipFlopBlock(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraFlipFlopBlockState(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_delay":
-                    entities_list.append(TesiraLogicDelayBlock(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicDelayBlockBypass(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_input":
-                    entities_list.append(TesiraLogicInputBlock(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicInputBlockInvert(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_output":
-                    entities_list.append(TesiraLogicOutputBlock(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicOutputBlockInvert(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_pulse":
                     entities_list.append(TesiraLogicPulseBlockIndefinite(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_sequence":
@@ -91,8 +91,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     async_add_entities(entities_list, update_before_add=True)
 
-class TesiraLogicStateBlock(SwitchEntity):
-    """Expose a Tesira logic state block as a Home Assistant switch entity."""
+class TesiraLogicStateBlockState(SwitchEntity):
+    """Expose a Tesira logic state block (State) as a Home Assistant switch entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -175,8 +175,8 @@ class TesiraLogicStateBlock(SwitchEntity):
         except Exception as e:
             _LOGGER.debug("Toggle failed for %s: %s", self._attr_unique_id, e)
 
-class TesiraFlipFlopBlock(SwitchEntity):
-    """Expose a Tesira flip flop block as a Home Assistant switch entity."""
+class TesiraFlipFlopBlockState(SwitchEntity):
+    """Expose a Tesira flip flop block (State) as a Home Assistant switch entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -259,8 +259,8 @@ class TesiraFlipFlopBlock(SwitchEntity):
         except Exception as e:
             _LOGGER.debug("Toggle failed for %s: %s", self._attr_unique_id, e)
 
-class TesiraLogicDelayBlock(SwitchEntity):
-    """Expose a Tesira logic delay block as a Home Assistant switch entity."""
+class TesiraLogicDelayBlockBypass(SwitchEntity):
+    """Expose a Tesira logic delay block (Bypass) as a Home Assistant switch entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -316,8 +316,8 @@ class TesiraLogicDelayBlock(SwitchEntity):
         except Exception as e:
             _LOGGER.debug("Toggle failed for %s: %s", self._attr_unique_id, e)
 
-class TesiraLogicInputBlock(SwitchEntity):
-    """Expose a Tesira logic input block as a Home Assistant switch entity."""
+class TesiraLogicInputBlockInvert(SwitchEntity):
+    """Expose a Tesira logic input block (Invert) as a Home Assistant switch entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -373,8 +373,8 @@ class TesiraLogicInputBlock(SwitchEntity):
         except Exception as e:
             _LOGGER.debug("Toggle failed for %s: %s", self._attr_unique_id, e)
 
-class TesiraLogicOutputBlock(SwitchEntity):
-    """Expose a Tesira logic output block as a Home Assistant switch entity."""
+class TesiraLogicOutputBlockInvert(SwitchEntity):
+    """Expose a Tesira logic output block (Invert) as a Home Assistant switch entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -430,8 +430,8 @@ class TesiraLogicOutputBlock(SwitchEntity):
         except Exception as e:
             _LOGGER.debug("Toggle failed for %s: %s", self._attr_unique_id, e)
 
-class TesiraLogicSelectorBlock(SwitchEntity):
-    """Expose a Tesira logic selector block as a Home Assistant switch entity."""
+class TesiraLogicSelectorBlockState(SwitchEntity):
+    """Expose a Tesira logic selector block (State) as a Home Assistant switch entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -714,7 +714,7 @@ class TesiraAudioMeterBlockIndefiniteHold(SwitchEntity):
                 self._attr_is_on = _coerce_bool(hold_enabled)
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse hold enabled state from response: {resp!r}")
+                raise ValueError(f"Could not parse indefinite hold state from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False

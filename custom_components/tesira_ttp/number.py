@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\number.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Wednesday, July 8th 2026, 1:46:51 AM                                                                   #
-# Last Modified: Monday, July 13th 2026, 11:35:44 PM                                                                   #
+# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
+# Last Modified: Tuesday, July 14th 2026, 12:17:57 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -52,8 +52,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         if "number" in entity[DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]]:
             match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
                 case "logic_delay":
-                    entities_list.append(TesiraLogicDelayBlockOn(hub=hub, hubkey=hubkey, entity=entity))
-                    entities_list.append(TesiraLogicDelayBlockOff(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicDelayBlockOnDelay(hub=hub, hubkey=hubkey, entity=entity))
+                    entities_list.append(TesiraLogicDelayBlockOffDelay(hub=hub, hubkey=hubkey, entity=entity))
                 case "logic_pulse":
                     entities_list.append(TesiraLogicPulseBlockOnDuration(hub=hub, hubkey=hubkey, entity=entity))
                     entities_list.append(TesiraLogicPulseBlockOffDuration(hub=hub, hubkey=hubkey, entity=entity))
@@ -85,8 +85,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     async_add_entities(entities_list, update_before_add=True)
 
-class TesiraLogicDelayBlockOn(NumberEntity):
-    """Expose a Tesira logic delay block (On) as a Home Assistant number entity."""
+class TesiraLogicDelayBlockOnDelay(NumberEntity):
+    """Expose a Tesira logic delay block (On Delay) as a Home Assistant number entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -121,7 +121,7 @@ class TesiraLogicDelayBlockOn(NumberEntity):
                 self._attr_native_value = delay
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse delay from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -132,10 +132,10 @@ class TesiraLogicDelayBlockOn(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set delay for %s: %s", self._attr_unique_id, e)
 
-class TesiraLogicDelayBlockOff(NumberEntity):
-    """Expose a Tesira logic delay block (Off) as a Home Assistant number entity."""
+class TesiraLogicDelayBlockOffDelay(NumberEntity):
+    """Expose a Tesira logic delay block (Off Delay) as a Home Assistant number entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -170,7 +170,7 @@ class TesiraLogicDelayBlockOff(NumberEntity):
                 self._attr_native_value = delay
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse delay from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -181,7 +181,7 @@ class TesiraLogicDelayBlockOff(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set delay for %s: %s", self._attr_unique_id, e)
 
 class TesiraLogicPulseBlockOffDuration(NumberEntity):
     """Expose a Tesira logic pulse block (Off Duration) as a Home Assistant number entity."""
@@ -219,7 +219,7 @@ class TesiraLogicPulseBlockOffDuration(NumberEntity):
                 self._attr_native_value = off_duration
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse duration from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -230,7 +230,7 @@ class TesiraLogicPulseBlockOffDuration(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set duration for %s: %s", self._attr_unique_id, e)
 
 class TesiraLogicPulseBlockOnDuration(NumberEntity):
     """Expose a Tesira logic pulse block (On Duration) as a Home Assistant number entity."""
@@ -268,7 +268,7 @@ class TesiraLogicPulseBlockOnDuration(NumberEntity):
                 self._attr_native_value = on_duration
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse duration from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -279,7 +279,7 @@ class TesiraLogicPulseBlockOnDuration(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set duration for %s: %s", self._attr_unique_id, e)
 
 class TesiraLogicPulseBlockPulseCount(NumberEntity):
     """Expose a Tesira logic pulse block (Pulse Count) as a Home Assistant number entity."""
@@ -315,7 +315,7 @@ class TesiraLogicPulseBlockPulseCount(NumberEntity):
                 self._attr_native_value = pulse_count
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse pulse count from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -326,7 +326,7 @@ class TesiraLogicPulseBlockPulseCount(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set pulse count for %s: %s", self._attr_unique_id, e)
 
 class TesiraLogicSequenceBlockOffDuration(NumberEntity):
     """Expose a Tesira logic sequence block (Off Duration) as a Home Assistant number entity."""
@@ -364,7 +364,7 @@ class TesiraLogicSequenceBlockOffDuration(NumberEntity):
                 self._attr_native_value = off_duration
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse duration from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -375,7 +375,7 @@ class TesiraLogicSequenceBlockOffDuration(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set duration for %s: %s", self._attr_unique_id, e)
 
 class TesiraLogicSequenceBlockOnDuration(NumberEntity):
     """Expose a Tesira logic sequence block (On Duration) as a Home Assistant number entity."""
@@ -413,7 +413,7 @@ class TesiraLogicSequenceBlockOnDuration(NumberEntity):
                 self._attr_native_value = on_duration
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse duration from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -424,7 +424,7 @@ class TesiraLogicSequenceBlockOnDuration(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set duration for %s: %s", self._attr_unique_id, e)
 
 class TesiraLogicSequenceBlockPulseCount(NumberEntity):
     """Expose a Tesira logic sequence block (Pulse Count) as a Home Assistant number entity."""
@@ -460,7 +460,7 @@ class TesiraLogicSequenceBlockPulseCount(NumberEntity):
                 self._attr_native_value = pulse_count
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse pulse count from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -471,7 +471,7 @@ class TesiraLogicSequenceBlockPulseCount(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set pulse count for %s: %s", self._attr_unique_id, e)
 
 class TesiraAudioMeterBlockHoldTime(NumberEntity):
     """Expose a Tesira audio meter block (Hold Time) as a Home Assistant number entity."""
@@ -504,12 +504,12 @@ class TesiraAudioMeterBlockHoldTime(NumberEntity):
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             resp = await self._hub.json(f"{self._instance_tag} get holdTime {self._channel}")
-            delay = resp["value"]
-            if delay is not None:
-                self._attr_native_value = delay
+            hold_time = resp["value"]
+            if hold_time is not None:
+                self._attr_native_value = hold_time
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse hold time from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -520,7 +520,7 @@ class TesiraAudioMeterBlockHoldTime(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set hold time for %s: %s", self._attr_unique_id, e)
 
 class TesiraSignalPresentMeterBlockOffDelay(NumberEntity):
     """Expose a Tesira signal present meter block (Off Delay) as a Home Assistant number entity."""
@@ -558,7 +558,7 @@ class TesiraSignalPresentMeterBlockOffDelay(NumberEntity):
                 self._attr_native_value = delay
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse delay from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -569,7 +569,7 @@ class TesiraSignalPresentMeterBlockOffDelay(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set delay for %s: %s", self._attr_unique_id, e)
 
 class TesiraSignalPresentMeterBlockOnDelay(NumberEntity):
     """Expose a Tesira signal present meter block (On Delay) as a Home Assistant number entity."""
@@ -607,7 +607,7 @@ class TesiraSignalPresentMeterBlockOnDelay(NumberEntity):
                 self._attr_native_value = delay
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse delay from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -618,7 +618,7 @@ class TesiraSignalPresentMeterBlockOnDelay(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set delay for %s: %s", self._attr_unique_id, e)
 
 class TesiraSignalPresentMeterBlockThreshold(NumberEntity):
     """Expose a Tesira signal present meter block (Threshold) as a Home Assistant number entity."""
@@ -651,12 +651,12 @@ class TesiraSignalPresentMeterBlockThreshold(NumberEntity):
         try:
             # Limits may differ between blocks/channels, so refresh before conversion each cycle.
             resp = await self._hub.json(f"{self._instance_tag} get threshold {self._channel}")
-            delay = resp["value"]
-            if delay is not None:
-                self._attr_native_value = delay
+            threshold = resp["value"]
+            if threshold is not None:
+                self._attr_native_value = threshold
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse threshold from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -667,4 +667,4 @@ class TesiraSignalPresentMeterBlockThreshold(NumberEntity):
             self._attr_is_on = True
             self.async_write_ha_state()
         except Exception as e:
-            _LOGGER.debug("Failed to set native value for %s: %s", self._attr_unique_id, e)
+            _LOGGER.debug("Failed to set threshold for %s: %s", self._attr_unique_id, e)

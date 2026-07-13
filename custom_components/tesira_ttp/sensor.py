@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\sensor.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
-# Last Modified: Monday, July 13th 2026, 11:19:21 PM                                                                   #
+# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
+# Last Modified: Tuesday, July 14th 2026, 12:17:57 AM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -110,7 +110,7 @@ class TesiraAudioMeterBlockLevel(SensorEntity):
             self._attr_available = True
             self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
         else:
-            _LOGGER.warning("Received subscription update without state value: %s", data)
+            _LOGGER.warning("Received subscription update without level value: %s", data)
 
     async def async_added_to_hass(self) -> None:
         self._hass = self.hass
@@ -132,7 +132,7 @@ class TesiraAudioMeterBlockLevel(SensorEntity):
                 self._attr_native_value = level
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse level from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
@@ -173,7 +173,7 @@ class TesiraSignalPresentMeterBlockLevel(SensorEntity):
             self._attr_available = True
             self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
         else:
-            _LOGGER.warning("Received subscription update without state value: %s", data)
+            _LOGGER.warning("Received subscription update without level value: %s", data)
 
     async def async_added_to_hass(self) -> None:
         self._hass = self.hass
@@ -195,7 +195,7 @@ class TesiraSignalPresentMeterBlockLevel(SensorEntity):
                 self._attr_native_value = level
                 self._attr_available = True
             else:
-                raise ValueError(f"Could not parse state from response: {resp!r}")
+                raise ValueError(f"Could not parse level from response: {resp!r}")
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
