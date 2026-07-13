@@ -1,8 +1,8 @@
 # #################################################################################################################### #
-# Filename: \custom_components\tesira_ttp\tesira_cli.py                                                                #
+# Filename: \custom_components\tesira_ttp\tesira_client\cli.py                                                         #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Thursday, March 26th 2026, 12:26:02 AM                                                                #
+# Created Date: Friday, July 10th 2026, 1:05:48 AM                                                                     #
+# Last Modified: Friday, July 10th 2026, 11:38:26 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -23,16 +23,19 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.                                               #
 # #################################################################################################################### #
 #!/usr/bin/env python3
-"""
-Tesira Interactive CLI using prompt_toolkit (Windows/Linux/Mac Compatible)
-"""
+"""Tesira Interactive CLI using prompt_toolkit (Windows/Linux/Mac Compatible)."""
 
-import asyncio
 import argparse
+import asyncio
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 
-from tesira_client import TesiraClient
+try:
+    from .client import TesiraClient
+except ImportError:
+    # Support direct execution: python .\custom_components\tesira_ttp\tesira_client\cli.py
+    from client import TesiraClient
 
 
 BANNER = r"""
