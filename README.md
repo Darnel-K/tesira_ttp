@@ -120,7 +120,7 @@ logger:
 
 An interactive CLI for testing Tesira Text Protocol commands is included:
 
-`custom_components/tesira_ttp/tesira_cli.py`
+`custom_components/tesira_ttp/tesira_client/cli.py`
 
 It provides a cross‑platform interactive shell (powered by `prompt_toolkit`)
 for sending Tesira Text Protocol commands, receiving real‑time publish‑token event updates,
@@ -145,13 +145,13 @@ Below are example commands demonstrating different connection scenarios.
 #### Connect with SSH (default protocol)
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_client/cli.py --host 10.xxx.xxx.xxx
 ```
 
 or
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --proto ssh
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_client/cli.py --host 10.xxx.xxx.xxx --proto ssh
 ```
 
 You do not need to specify '`--proto ssh`' when connecting with SSH
@@ -159,37 +159,37 @@ You do not need to specify '`--proto ssh`' when connecting with SSH
 #### Connect with non-default port (SSH)
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --port 2222
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_client/cli.py --host 10.xxx.xxx.xxx --port 2222
 ```
 
 #### Connect with username and blank password (SSH)
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --user admin
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_client/cli.py --host 10.xxx.xxx.xxx --user admin
 ```
 
 #### Connect with username and password (SSH)
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --user admin --password MySecretPass
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_client/cli.py --host 10.xxx.xxx.xxx --user admin --password MySecretPass
 ```
 
 #### Connect with non-default port, username and password (SSH)
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --port 2222 --user admin --password MySecretPass
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_client/cli.py --host 10.xxx.xxx.xxx --port 2222 --user admin --password MySecretPass
 ```
 
 #### Connect with Telnet
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --proto telnet
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_client/cli.py --host 10.xxx.xxx.xxx --proto telnet
 ```
 
 #### Connect with non-default port (Telnet)
 
 ```bash
-ha core exec python3 /config/custom_components/tesira_ttp/tesira_cli.py --host 10.xxx.xxx.xxx --proto telnet --port 2323
+ha core exec python3 /config/custom_components/tesira_ttp/tesira_client/cli.py --host 10.xxx.xxx.xxx --proto telnet --port 2323
 ```
 
 ### Command Examples
@@ -213,10 +213,20 @@ Special commands include:
 
 ## Supported Blocks and Entities
 
-| Block Type | Home Assistant Platform | Main Features |
-| ---------- | ----------------------- | ------------- |
-| `level` | `media_player` | Set volume, step volume, mute/unmute |
-| `logic_state` | `switch` | On/Off, toggle |
+| Block Type | Home Assistant Platforms |
+| ---------- | ----------------------- |
+| Level | `media_player` |
+| Logic State | `switch` |
+| Flip Flop | `switch` |
+| Logic Delay | `switch`, `number` |
+| Logic Input | `switch` |
+| Logic Meter | `binary_sensor` |
+| Logic Output | `switch` |
+| Logic Selector | `switch` |
+| Logic Pulse | `binary_sensor`, `switch`, `number`, `button` |
+| Logic Sequence | `binary_sensor`, `switch`, `number`, `button` |
+| Audio Meter | `sensor`, `switch`, `number`, `select` |
+| Signal Present Meter | `sensor`, `binary_sensor`, `switch`, `number` |
 
 Additional entities created automatically:
 
