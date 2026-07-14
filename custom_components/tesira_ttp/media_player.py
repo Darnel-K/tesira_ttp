@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
-# Last Modified: Tuesday, July 14th 2026, 8:08:14 PM                                                                   #
+# Last Modified: Tuesday, July 14th 2026, 8:09:19 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -56,7 +56,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     entities_list.append(TesiraLevelBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
-                        "Unsupported button block type '%s' for entity: %s",
+                        "Unsupported media player block type '%s' for entity: %s",
                         entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"]),
                         entity,
                     )
