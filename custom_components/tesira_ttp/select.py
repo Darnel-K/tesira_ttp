@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\select.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, July 9th 2026, 11:38:40 PM                                                                   #
-# Last Modified: Friday, July 10th 2026, 12:10:40 AM                                                                   #
+# Last Modified: Tuesday, July 14th 2026, 8:09:58 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -60,7 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     entities_list.append(TesiraAudioMeterBlockType(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
-                        "Unsupported button block type '%s' for entity: %s",
+                        "Unsupported select block type '%s' for entity: %s",
                         entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"]),
                         entity,
                     )
