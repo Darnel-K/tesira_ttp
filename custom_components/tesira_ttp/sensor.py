@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\sensor.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Tuesday, July 14th 2026, 12:17:57 AM                                                                  #
+# Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
+# Last Modified: Tuesday, July 14th 2026, 8:10:54 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -59,7 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     entities_list.append(TesiraSignalPresentMeterBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
-                        "Unsupported switch block type '%s' for entity: %s",
+                        "Unsupported sensor block type '%s' for entity: %s",
                         entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"]),
                         entity,
                     )
@@ -75,7 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities_list, update_before_add=True)
 
 class TesiraAudioMeterBlockLevel(SensorEntity):
-    """Expose a Tesira audio meter block (Level) as a Home Assistant switch entity."""
+    """Expose a Tesira audio meter block (Level) as a Home Assistant sensor entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
@@ -138,7 +138,7 @@ class TesiraAudioMeterBlockLevel(SensorEntity):
             self._attr_available = False
 
 class TesiraSignalPresentMeterBlockLevel(SensorEntity):
-    """Expose a Tesira signal present meter block (Level) as a Home Assistant switch entity."""
+    """Expose a Tesira signal present meter block (Level) as a Home Assistant sensor entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
