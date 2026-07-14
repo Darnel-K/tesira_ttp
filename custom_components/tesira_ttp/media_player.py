@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\media_player.py                                                              #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Wednesday, July 8th 2026, 1:46:51 AM                                                                   #
-# Last Modified: Monday, July 13th 2026, 11:58:54 PM                                                                   #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Tuesday, July 14th 2026, 8:08:14 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -54,7 +54,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             match entity[DICT_KEYS["ENTITY_BLOCK_TYPE"]]:
                 case "level":
                     entities_list.append(TesiraLevelBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
-
+                case _:
+                    _LOGGER.debug(
+                        "Unsupported button block type '%s' for entity: %s",
+                        entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"]),
+                        entity,
+                    )
 
     # Remove stale media_player entities no longer present in the current config.
     entity_registry = er.async_get(hass)
