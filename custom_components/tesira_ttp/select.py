@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\select.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Thursday, July 9th 2026, 11:38:40 PM                                                                   #
-# Last Modified: Tuesday, July 14th 2026, 8:09:58 PM                                                                   #
+# Last Modified: Tuesday, July 14th 2026, 8:10:14 PM                                                                   #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -76,7 +76,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(entities_list, update_before_add=True)
 
 class TesiraAudioMeterBlockType(SelectEntity):
-    """Expose a Tesira audio meter block (Type) as a Home Assistant button entity."""
+    """Expose a Tesira audio meter block (Type) as a Home Assistant select entity."""
 
     def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
         self._hub = hub
