@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client\cli.py                                                         #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Friday, July 10th 2026, 1:05:48 AM                                                                     #
-# Last Modified: Friday, July 10th 2026, 11:38:26 PM                                                                   #
+# Last Modified: Tuesday, July 14th 2026, 11:28:09 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -146,6 +146,7 @@ async def main():
         password=args.password,
         port=args.port,
         proto=args.proto,
+        safe_mode=True
     )
 
     await client.connect()

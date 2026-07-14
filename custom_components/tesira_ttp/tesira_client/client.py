@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client\client.py                                                      #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Friday, July 10th 2026, 1:05:48 AM                                                                     #
-# Last Modified: Friday, July 10th 2026, 11:38:20 PM                                                                   #
+# Last Modified: Tuesday, July 14th 2026, 11:33:42 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -119,7 +119,7 @@ class TesiraClient:
         heartbeat_interval: float = 10.0,
         heartbeat_failure_threshold: int = 3,
         heartbeat_jitter: float = 1.5,
-        safe_mode=False,
+        safe_mode=True,
     ):
         # Validate protocol and apply default ports.
         proto = proto.lower().strip()
@@ -416,7 +416,7 @@ class TesiraClient:
 
             if final.startswith("-ERR"):
                 if self.safe_mode:
-                    return {"error": final, "raw": raw}
+                    return {"status": "ERR", "error": final, "raw": raw}
                 raise self.CommandError(final, raw=raw, cmd=cmd)
 
             return final
@@ -428,32 +428,35 @@ class TesiraClient:
         if isinstance(raw, dict):
             return raw
 
-        payload = raw[3:].strip()
+        raw_payload = raw[3:].strip()
 
         # Fix Tesira arrays
         def fix_array(m):
             parts = m.group(1).split()
             return "[" + ", ".join(parts) + "]"
 
-        payload = re.sub(r"\[([^\[\]]+)\]", fix_array, payload)
+        raw_payload = re.sub(r"\[([^\[\]]+)\]", fix_array, raw_payload)
 
         # Insert commas between values and the next quoted key
-        payload = re.sub(r'([A-Za-z0-9_"\}\]])\s+"', r'\1, "', payload)
+        raw_payload = re.sub(r'([A-Za-z0-9_"\}\]])\s+"', r'\1, "', raw_payload)
 
         # Insert commas between quoted fields
-        payload = re.sub(r'"\s+"', '", "', payload)
+        raw_payload = re.sub(r'"\s+"', '", "', raw_payload)
 
         # Wrap in object if required
-        if not payload.startswith("{"):
-            payload = "{" + payload + "}"
+        if not raw_payload.startswith("{"):
+            raw_payload = "{" + raw_payload + "}"
 
         # Quote unquoted enum literals
-        payload = re.sub(r':([A-Z_][A-Z0-9_]*)\b(?!")', r':"\1"', payload)
+        raw_payload = re.sub(r':([A-Z_][A-Z0-9_]*)\b(?!")', r':"\1"', raw_payload)
 
         try:
-            return json.loads(payload)
+            payload = json.loads(raw_payload)
+            if raw.startswith("+OK"):
+                payload.setdefault("status", "OK")
+            return payload
         except Exception as e:
-            raise self.JSONParseError(f"JSON parsing failed: {e}", raw=payload, cmd=cmd)
+            raise self.JSONParseError(f"JSON parsing failed: {e}", raw=raw_payload, cmd=cmd)
 
     # Periodic health check that disconnects after repeated failures.
     async def _heartbeat_loop(self):
