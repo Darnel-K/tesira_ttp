@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\tesira_client\client.py                                                      #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Friday, July 10th 2026, 1:05:48 AM                                                                     #
-# Last Modified: Tuesday, July 14th 2026, 11:33:42 PM                                                                  #
+# Last Modified: Thursday, July 16th 2026, 10:35:36 PM                                                                 #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -477,12 +477,12 @@ class TesiraClient:
                     await self.disconnect()
 
     # Subscription helpers.
-    async def subscribe(self, object_type, attribute, index, token, interval_ms, callback):
-        cmd = f"{object_type} subscribe {attribute} {index} {token} {interval_ms}"
+    async def subscribe(self, instance_tag, attribute, index, token, interval_ms, callback):
+        cmd = f"{instance_tag} subscribe {attribute} {index} {token} {interval_ms}"
         await self.command(cmd)
 
         self._subscriptions[token] = {
-            "object_type": object_type,
+            "instance_tag": instance_tag,
             "attribute": attribute,
             "index": index,
             "interval_ms": interval_ms,
@@ -490,10 +490,9 @@ class TesiraClient:
         }
 
     async def unsubscribe(self, token: str):
-        try:
-            await self.command(f"unsubscribe {token}")
-        except self.CommandError:
-            await self.command(f"UNSUBSCRIBE {token}")
+        sub = self._subscriptions.get(token)
+        cmd = f"{sub["instance_tag"]} unsubscribe {sub["attribute"]} {sub["index"]} {token}"
+        await self.command(cmd)
 
         self._subscriptions.pop(token, None)
 
