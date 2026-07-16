@@ -2,7 +2,7 @@
 # Filename: \custom_components\tesira_ttp\sensor.py                                                                    #
 # Repository: tesira_ttp                                                                                               #
 # Created Date: Friday, July 10th 2026, 12:12:28 AM                                                                    #
-# Last Modified: Tuesday, July 14th 2026, 8:10:54 PM                                                                   #
+# Last Modified: Thursday, July 16th 2026, 9:04:53 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -48,6 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # devices = copy.deepcopy(entry.data.get(DICT_KEYS["DEVICES"], DEFAULTS["DEVICES"]))
     entities = copy.deepcopy(entry.options.get(DICT_KEYS["ENTITIES"], DEFAULTS["ENTITIES"]))
     entities_list = []
+    matrix_mixer_tags_added: set[str | None] = set()
 
     # Build entities from the dynamic options structure by block type.
     for entity in entities:
@@ -57,6 +58,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     entities_list.append(TesiraAudioMeterBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
                 case "signal_present_meter":
                     entities_list.append(TesiraSignalPresentMeterBlockLevel(hub=hub, hubkey=hubkey, entity=entity))
+                case "matrix_mixer":
+                    instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+                    if instance_tag in matrix_mixer_tags_added:
+                        continue
+                    matrix_mixer_tags_added.add(instance_tag)
+                    entities_list.append(TesiraMatrixMixerBlockFullState(hub=hub, hubkey=hubkey, entity=entity))
                 case _:
                     _LOGGER.debug(
                         "Unsupported sensor block type '%s' for entity: %s",
@@ -199,3 +206,171 @@ class TesiraSignalPresentMeterBlockLevel(SensorEntity):
         except Exception as e:
             _LOGGER.debug("Update failed for %s: %s", self._attr_unique_id, e)
             self._attr_available = False
+
+class TesiraMatrixMixerBlockFullState(SensorEntity):
+    """Expose a Tesira matrix mixer block (Full State) as a Home Assistant sensor entity."""
+
+    def __init__(self, hub: TesiraHub, hubkey: str, entity: dict[str, Any]) -> None:
+        self._hub = hub
+        self._hubkey = hubkey
+        self._entity = entity
+        self._instance_tag = entity.get(DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"])
+        self._block_type = entity.get(DICT_KEYS["ENTITY_BLOCK_TYPE"])
+        self._device_id = entity.get(DICT_KEYS["DEVICE_ID"])
+        self._sub = entity.get(DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"])
+        self._attr_name = f"Tesira Matrix Mixer Block - Tag:{self._instance_tag} - Attr:ExtendedAttributes ({self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]})"
+        self._attr_unique_id = f"tesira_ttp_{self._hubkey[:10] if self._device_id == "None" else self._device_id[:10]}_{self._block_type}_{self._instance_tag}_extendedattributes".lower()
+        self._attr_state_class = None
+        self._attr_available = True
+        self._subscription_keys = {}
+        self._attr_native_value = "0 Active Routes"
+
+        self._matrix = {}
+        self._matrix["matrix"] = self._instance_tag
+        self._matrix["active_route_count"] = 0
+        self._matrix["routes"] = {}
+        self._matrix["active_routes"] = []
+
+        if self._sub:
+            # Subscription mode pushes updates from the DSP, so polling is unnecessary.
+            self._attr_should_poll = False
+        else:
+            self._attr_should_poll = True
+
+    @property
+    def device_info(self):
+        return {DICT_KEYS["ENTITY_DEVICE_IDENTIFIERS"]: {(DOMAIN, self._device_id)}} if self._device_id != "None" else None
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes of the sensor."""
+        return self._matrix
+
+    def _update_matrix_numInputs(self, data: dict) -> None:
+        input_count = data.get("value", None)
+        if input_count is not None and data.get("status") == "OK":
+            self._matrix["numInputs"] = int(input_count)
+
+    def _update_matrix_numOutputs(self, data: dict) -> None:
+        output_count = data.get("value", None)
+        if output_count is not None and data.get("status") == "OK":
+            self._matrix["numOutputs"] = int(output_count)
+
+    def _update_matrix_delayEnabled(self, data: dict) -> None:
+        delay_state = data.get("value", None)
+        if delay_state is not None and data.get("status") == "OK":
+            self._matrix["delayEnabled"] = _coerce_bool(delay_state)
+
+    def _update_matrix_crosspoint_level_state(self, data: dict) -> None:
+        try:
+            publish_token = data.get("publishToken", None)
+            route = self._subscription_keys.get(publish_token, None)
+            value = data.get("value", None)
+            if route is not None and value is not None:
+                value = _coerce_bool(value)
+                self._matrix["routes"][route]["enabled"] = bool(value)
+                if value:
+                    if f"{route}" not in self._matrix["active_routes"]:
+                        self._matrix["active_routes"].append(f"{route}")
+                else:
+                    if f"{route}" in self._matrix["active_routes"]:
+                        self._matrix["active_routes"].remove(f"{route}")
+                self._matrix["active_route_count"] = len(self._matrix["active_routes"])
+                self._attr_native_value = f"{self._matrix["active_route_count"]} Active Route(s)"
+            self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+        except Exception as e:
+            _LOGGER.debug("Failed to update matrix crosspoint state from subscription data: %s", e)
+
+    def _update_matrix_crosspoint_level(self, data: dict) -> None:
+        try:
+            publish_token = data.get("publishToken", None)
+            route = self._subscription_keys.get(publish_token, None)
+            value = data.get("value", None)
+            if route is not None and value is not None:
+                self._matrix["routes"][route]["level"] = float(value)
+            self._hass.loop.call_soon_threadsafe(self.async_write_ha_state)
+        except Exception as e:
+            _LOGGER.debug("Failed to update matrix crosspoint state from subscription data: %s", e)
+
+    async def async_added_to_hass(self) -> None:
+        self._hass = self.hass
+        if self._sub:
+            # Prime state once before starting subscriptions to avoid an empty initial UI state.
+            await self.async_update()
+            for k in self._matrix["routes"].keys():
+                route = k.replace(":", " ")
+                crosspoint_state_sub_token = f"hass_sensor_matrix_mixer_crosspoint_state_{self._instance_tag}_route_{k.replace(':', '_')}"
+                crosspoint_level_sub_token = f"hass_sensor_matrix_mixer_crosspoint_level_{self._instance_tag}_route_{k.replace(':', '_')}"
+                await self._hub.subscribe(self._instance_tag, "crosspointLevelState", route, crosspoint_state_sub_token, 100, self._update_matrix_crosspoint_level_state)
+                await self._hub.subscribe(self._instance_tag, "crosspointLevel", route, crosspoint_level_sub_token, 100, self._update_matrix_crosspoint_level)
+                self._subscription_keys[crosspoint_state_sub_token] = k
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._sub:
+            for k in copy.deepcopy(self._subscription_keys).keys():
+                await self._hub.unsubscribe(f"{k}")
+                self._subscription_keys.pop(k)
+
+    async def async_update(self) -> None:
+        try:
+            resp = await self._hub.json(f"{self._instance_tag} get numInputs")
+            self._update_matrix_numInputs(resp)
+        except Exception as e:
+            _LOGGER.debug("Failed to update matrix numInputs: %s", e)
+        try:
+            resp = await self._hub.json(f"{self._instance_tag} get numOutputs")
+            self._update_matrix_numOutputs(resp)
+        except Exception as e:
+            _LOGGER.debug("Failed to update matrix numOutputs: %s", e)
+        try:
+            resp = await self._hub.json(f"{self._instance_tag} get delayEnabled")
+            self._update_matrix_delayEnabled(resp)
+        except Exception as e:
+            _LOGGER.debug("Failed to update matrix delay enabled state: %s", e)
+        try:
+            for i in range(1, (self._matrix.get("numInputs", 0) + 1)):
+                for o in range(1, (self._matrix.get("numOutputs", 0) + 1)):
+                    self._matrix["routes"][f"{i}:{o}"] = {}
+                    try:
+                        resp = await self._hub.json(f"{self._instance_tag} get crosspointLevelState {i} {o}")
+                        crosspoint_state = resp.get("value", None)
+                        if crosspoint_state is not None and resp.get("status") == "OK":
+                            crosspoint_state = _coerce_bool(crosspoint_state)
+                            self._matrix["routes"][f"{i}:{o}"]["enabled"] = bool(crosspoint_state)
+                            if crosspoint_state:
+                                if f"{i}:{o}" not in self._matrix["active_routes"]:
+                                    self._matrix["active_routes"].append(f"{i}:{o}")
+                            else:
+                                if f"{i}:{o}" in self._matrix["active_routes"]:
+                                    self._matrix["active_routes"].remove(f"{i}:{o}")
+                            self._matrix["active_route_count"] = len(self._matrix["active_routes"])
+                            self._attr_native_value = f"{self._matrix["active_route_count"]} Active Route(s)"
+                    except Exception as e:
+                        _LOGGER.debug("Failed to update matrix crosspoint state for input %d and output %d: %s", i, o, e)
+                    try:
+                        resp = await self._hub.json(f"{self._instance_tag} get crosspointLevel {i} {o}")
+                        crosspoint_level = resp.get("value", None)
+                        if crosspoint_level is not None and resp.get("status") == "OK":
+                            self._matrix["routes"][f"{i}:{o}"]["level"] = float(crosspoint_level)
+                    except Exception as e:
+                        _LOGGER.debug("Failed to update matrix crosspoint level for input %d and output %d: %s", i, o, e)
+                    if self._matrix.get("delayEnabled", False):
+                        crosspoint_delay_state = None
+                        try:
+                            resp = await self._hub.json(f"{self._instance_tag} get crosspointDelayState {i} {o}")
+                            crosspoint_delay_state = resp.get("value", None)
+                            if crosspoint_delay_state is not None and resp.get("status") == "OK":
+                                crosspoint_delay_state = _coerce_bool(crosspoint_delay_state)
+                                self._matrix["routes"][f"{i}:{o}"]["delay_enabled"] = bool(crosspoint_delay_state)
+                        except Exception as e:
+                            _LOGGER.debug("Failed to update matrix crosspoint delay state for input %d and output %d: %s", i, o, e)
+                        if crosspoint_delay_state:
+                            try:
+                                resp = await self._hub.json(f"{self._instance_tag} get crosspointDelay {i} {o}")
+                                crosspoint_delay = resp.get("value", None)
+                                if crosspoint_delay is not None and resp.get("status") == "OK":
+                                    self._matrix["routes"][f"{i}:{o}"]["delay_db"] = float(crosspoint_delay)
+                            except Exception as e:
+                                _LOGGER.debug("Failed to update matrix crosspoint delay (db) for input %d and output %d: %s", i, o, e)
+        except Exception as e:
+            _LOGGER.debug("Failed to update matrix routes: %s", e)

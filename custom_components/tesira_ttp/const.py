@@ -1,8 +1,8 @@
 # #################################################################################################################### #
 # Filename: \custom_components\tesira_ttp\const.py                                                                     #
 # Repository: tesira_ttp                                                                                               #
-# Created Date: Thursday, April 16th 2026, 11:44:37 PM                                                                 #
-# Last Modified: Monday, July 13th 2026, 11:36:27 PM                                                                   #
+# Created Date: Thursday, March 19th 2026, 12:56:52 AM                                                                 #
+# Last Modified: Tuesday, July 14th 2026, 10:58:59 PM                                                                  #
 # Original Author: Darnel Kumar                                                                                        #
 # Author Github: https://github.com/Darnel-K                                                                           #
 #                                                                                                                      #
@@ -195,6 +195,15 @@ BLOCK_SCHEMA_DATA = {
         },
         DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["switch", "number", "sensor", "binary_sensor"],
         DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_CHANNEL"], DICT_KEYS["ENTITY_MIN_VALUE"], DICT_KEYS["ENTITY_MAX_VALUE"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
+    },
+    "matrix_mixer": {
+        "label": "Matrix Mixer",
+        # DICT_KEYS["ENTITY_BLOCK_FIELD_OPTIONS"]: {
+        #     DICT_KEYS["ENTITY_MIN_VALUE"]: {"min": -64, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"},
+        #     DICT_KEYS["ENTITY_MAX_VALUE"]: {"min": -64, "max": 60000, DICT_KEYS["ENTITY_FIELD_TYPE_OVERRIDE"]: "integer"}
+        # },
+        DICT_KEYS["ENTITY_BLOCK_SUPPORTED_TYPES"]: ["sensor"],
+        DICT_KEYS["ENTITY_BLOCK_FIELDS"]: [DICT_KEYS["DEVICE_ID"], DICT_KEYS["ENTITY_BLOCK_INSTANCE_TAG"], DICT_KEYS["ENTITY_BLOCK_SUBSCRIBE"]]
     }
 }
 
